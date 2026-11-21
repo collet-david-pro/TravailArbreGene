@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "dossier": {"titre": "Situation familiale de Tom Durand", "creeLe": "2026-11-21", "modifieLe": "2026-11-21", "auteur": "Infirmière scolaire", "logo": null},
+  "personnes": [
+    {"id":"p1","prenom":"Georges","nom":"Martin","nomNaissance":"","sexe":"M","dateNaissance":"1946-05-12","age":null,"decede":true,"dateDeces":"2019-03-08","ageDeces":null,"profession":"Retraité (ancien menuisier)","foyer":null,"notes":"Grand-père maternel, décédé.","concerne":false,"inconnu":false},
+    {"id":"p2","prenom":"Odette","nom":"Martin","nomNaissance":"Lefèvre","sexe":"F","dateNaissance":"1948-09-30","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Retraitée","foyer":null,"notes":"Grand-mère maternelle, voit Tom le mercredi.","concerne":false,"inconnu":false},
+    {"id":"p3","prenom":"Sandrine","nom":"Martin","nomNaissance":"","sexe":"F","dateNaissance":"1980-02-14","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Aide-soignante","foyer":"h1","notes":"Mère de Tom et Léa. Garde principale.","concerne":false,"inconnu":false},
+    {"id":"p4","prenom":"Marc","nom":"Durand","nomNaissance":"","sexe":"M","dateNaissance":"1978-11-03","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Chauffeur-livreur","foyer":"h2","notes":"Père de Tom, Léa et Noé. Droit de visite un week-end sur deux.","concerne":false,"inconnu":false},
+    {"id":"p5","prenom":"Karim","nom":"Benali","nomNaissance":"","sexe":"M","dateNaissance":null,"age":51,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Électricien","foyer":"h1","notes":"Compagnon de Sandrine, père d'Inès.","concerne":false,"inconnu":false},
+    {"id":"p6","prenom":"Julie","nom":"Durand","nomNaissance":"Roux","sexe":"F","dateNaissance":"1982-07-21","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Employée de banque","foyer":"h2","notes":"Épouse de Marc, belle-mère de Tom.","concerne":false,"inconnu":false},
+    {"id":"p7","prenom":"Paul","nom":"Durand","nomNaissance":"","sexe":"M","dateNaissance":"1950-01-17","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Retraité","foyer":null,"notes":"Grand-père paternel.","concerne":false,"inconnu":false},
+    {"id":"p8","prenom":"Tom","nom":"Durand","nomNaissance":"","sexe":"M","dateNaissance":"2012-03-04","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Collégien (4e)","foyer":"h1","notes":"Élève suivi pour absentéisme et tensions familiales.","concerne":true,"inconnu":false},
+    {"id":"p9","prenom":"Léa","nom":"Durand","nomNaissance":"","sexe":"F","dateNaissance":"2015-06-18","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"École primaire (CM1)","foyer":"h1","notes":"","concerne":false,"inconnu":false},
+    {"id":"p10","prenom":"Inès","nom":"Benali","nomNaissance":"","sexe":"F","dateNaissance":"2020-10-02","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Maternelle","foyer":"h1","notes":"","concerne":false,"inconnu":false},
+    {"id":"p11","prenom":"Noé","nom":"Durand","nomNaissance":"","sexe":"M","dateNaissance":"2022-04-09","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Crèche","foyer":"h2","notes":"","concerne":false,"inconnu":false},
+    {"id":"p12","prenom":"Claire","nom":"Lambert","nomNaissance":"Durand","sexe":"F","dateNaissance":"1981-08-25","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Infirmière","foyer":null,"notes":"Tante paternelle de Tom.","concerne":false,"inconnu":false},
+    {"id":"p13","prenom":"Hugo","nom":"Lambert","nomNaissance":"","sexe":"M","dateNaissance":"2010-12-12","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Collégien (3e)","foyer":null,"notes":"Cousin et ami proche de Tom.","concerne":false,"inconnu":false},
+    {"id":"p14","prenom":"Parent inconnu","nom":"","nomNaissance":"","sexe":"F","dateNaissance":null,"age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"","foyer":null,"notes":"Mère de Marc et Claire, aucune information.","concerne":false,"inconnu":true}
+  ],
+  "unions": [
+    {"id":"u1","p1":"p1","p2":"p2","statut":"veuf"},
+    {"id":"u2","p1":"p3","p2":"p4","statut":"divorce"},
+    {"id":"u3","p1":"p3","p2":"p5","statut":"pacse"},
+    {"id":"u4","p1":"p4","p2":"p6","statut":"marie"},
+    {"id":"u5","p1":"p7","p2":"p14","statut":"separe"}
+  ],
+  "filiations": [
+    {"id":"f1","parent":"p1","enfant":"p3","type":"biologique"},
+    {"id":"f2","parent":"p2","enfant":"p3","type":"biologique"},
+    {"id":"f3","parent":"p7","enfant":"p4","type":"biologique"},
+    {"id":"f4","parent":"p14","enfant":"p4","type":"biologique"},
+    {"id":"f5","parent":"p7","enfant":"p12","type":"biologique"},
+    {"id":"f6","parent":"p14","enfant":"p12","type":"biologique"},
+    {"id":"f7","parent":"p3","enfant":"p8","type":"biologique"},
+    {"id":"f8","parent":"p4","enfant":"p8","type":"biologique"},
+    {"id":"f9","parent":"p3","enfant":"p9","type":"biologique"},
+    {"id":"f10","parent":"p4","enfant":"p9","type":"biologique"},
+    {"id":"f11","parent":"p3","enfant":"p10","type":"biologique"},
+    {"id":"f12","parent":"p5","enfant":"p10","type":"biologique"},
+    {"id":"f13","parent":"p4","enfant":"p11","type":"biologique"},
+    {"id":"f14","parent":"p6","enfant":"p11","type":"biologique"},
+    {"id":"f15","parent":"p12","enfant":"p13","type":"biologique"}
+  ],
+  "foyers": [
+    {"id":"h1","nom":"Domicile de la mère","couleur":"#4a90a4"},
+    {"id":"h2","nom":"Domicile du père","couleur":"#c27c3a"}
+  ],
+  "relations": [
+    {"id":"r1","de":"p4","vers":"p8","type":"conflit"},
+    {"id":"r2","de":"p3","vers":"p8","type":"fusionnelle"},
+    {"id":"r3","de":"p8","vers":"p7","type":"distante"}
+  ],
+  "liensLibres": [
+    {"id":"l1","de":"p13","vers":"p8","libelle":"Meilleur ami"}
+  ]
+}

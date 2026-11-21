@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arbre familial</title>
+<style>
+/* ===== Styles ===== */
+:root{--bg:#f3f5f8;--ink:#1f2a37;--mut:#64748b;--bleu:#34495e;--bleu2:#4a6277;--clair:#e8edf2;--bord:#cbd5df;--acc:#d9772b;--acc2:#fde9d2;--rouge:#b3261e;--blanc:#fff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+#app{display:flex;flex-direction:column;height:100%}
+#bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--bleu);color:#fff;flex-wrap:wrap}
+#bar h1{font-size:16px;margin:0;font-weight:600;flex:1;min-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dirty{display:none;color:#ffd9b0;font-size:13px}
+#dirty.on{display:inline}
+.btn{border:1px solid var(--bord);background:#fff;border-radius:6px;padding:6px 12px;cursor:pointer}
+.btn:hover{background:var(--clair)}
+.btn.acc{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.acc:hover{background:#c0661f}
+.btn.dan{background:var(--rouge);border-color:var(--rouge);color:#fff}
+.btn.pet{padding:2px 8px;font-size:13px}
+#bar .btn{background:transparent;color:#fff;border-color:#8aa0b3}
+#bar .btn:hover{background:var(--bleu2)}
+#bar .btn.acc{background:var(--acc);border-color:var(--acc)}
+#main{display:flex;flex:1;min-height:0}
+#side{width:290px;flex:none;background:#fff;border-right:1px solid var(--bord);overflow-y:auto;padding:10px}
+#side h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--bleu2);margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center}
+#side h2:first-child{margin-top:0}
+#rech{width:100%;padding:6px 8px;border:1px solid var(--bord);border-radius:6px;margin-bottom:6px}
+.liste{list-style:none;margin:0;padding:0}
+.liste li{padding:4px 6px;border-radius:5px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.liste li:hover{background:var(--clair)}
+.liste li.sel{background:var(--acc2);font-weight:600}
+.liste .vide{color:var(--mut);cursor:default;font-style:italic}
+#lp{max-height:38vh;overflow-y:auto}
+#vue{flex:1;position:relative;min-width:0;background:#fff}
+#arbre{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#arbre.pan{cursor:grabbing}
+#ctrl{position:absolute;left:10px;bottom:10px;right:10px;display:flex;gap:12px;align-items:center;pointer-events:none;flex-wrap:wrap}
+#ctrl>*{pointer-events:auto;background:rgba(255,255,255,.92);border:1px solid var(--bord);border-radius:6px;padding:4px 8px}
+#ctrl label{cursor:pointer;display:flex;gap:4px;align-items:center}
+#ctrl .sp{flex:1;background:none;border:0;pointer-events:none}
+#vide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mut);text-align:center;pointer-events:none}
+#fiche{flex:none;background:#fff;border-top:1px solid var(--bord);padding:8px 14px;min-height:62px;max-height:30vh;overflow-y:auto}
+#fiche .fh{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#fiche .fh b{font-size:15px}
+#fiche .liens{margin-top:4px;color:var(--mut);font-size:13px}
+#fiche .notes{margin-top:4px;font-size:13px;white-space:pre-wrap}
+#toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:var(--bleu);color:#fff;padding:8px 14px;border-radius:6px;display:none;max-width:80%;z-index:50}
+.ov{position:fixed;inset:0;background:rgba(31,42,55,.45);display:flex;align-items:flex-start;justify-content:center;padding:4vh 10px;overflow-y:auto;z-index:40}
+.modal{background:#fff;border-radius:10px;width:min(620px,100%);box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.modal header{padding:12px 16px;border-bottom:1px solid var(--bord);font-weight:600;font-size:16px;color:var(--bleu)}
+.modal .corps{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.modal footer{padding:10px 16px;border-top:1px solid var(--bord);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.champ{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--mut)}
+.champ input,.champ select,.champ textarea{padding:6px 8px;border:1px solid var(--bord);border-radius:6px;color:var(--ink);background:#fff;font-size:14px}
+.champ textarea{min-height:70px;resize:vertical}
+.rang{display:flex;gap:10px;flex-wrap:wrap}
+.rang>*{flex:1;min-width:140px}
+.chk{display:flex;gap:6px;align-items:center;font-size:14px;cursor:pointer}
+.err{color:var(--rouge);font-size:13px;min-height:0}
+.aide{font-size:12px;color:var(--mut)}
+.phrase{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.phrase select{padding:6px 8px;border:1px solid var(--bord);border-radius:6px;max-width:100%}
+.ligne{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:4px 0;border-bottom:1px solid var(--clair)}
+.ligne>span{flex:1;min-width:160px}
+.boite{border:1px solid var(--bord);border-radius:8px;padding:10px;background:#f8fafc;display:flex;flex-direction:column;gap:8px}
+.checks{max-height:200px;overflow-y:auto;border:1px solid var(--bord);border-radius:6px;padding:6px}
+.logoprev{max-height:60px;max-width:200px;display:block;margin:4px 0}
+/* arbre */
+.t-nom{font-size:12px;font-weight:600;fill:#1f2a37}
+.t-age,.t-pro{font-size:11px;fill:#475569}
+.t-fo{font-size:11px;font-weight:600}
+.t-lib{font-size:10px;fill:#475569;font-style:italic}
+.noeud{cursor:pointer}
+.noeud:hover .hl{opacity:.35}
+.hl{fill:var(--acc);opacity:0}
+.noeud.sel .hl{opacity:.45}
+#ctrl .btn.on{background:var(--bleu);border-color:var(--bleu);color:#fff}
+.pd{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none;vertical-align:middle}
+.lrel{display:flex;gap:8px;align-items:center;padding:2px 0;font-size:13px}
+.lrel .tx{flex:1}
+#bandeau{display:none;background:var(--acc2);color:#7a3d06;padding:6px 14px;font-size:13px;border-bottom:1px solid #f1cfa8}
+.accueil{pointer-events:auto;background:#fff;border:1px solid var(--bord);border-radius:10px;padding:22px 26px;max-width:460px;box-shadow:0 4px 18px rgba(0,0,0,.08)}
+.accueil h2{margin:0 0 6px;color:var(--bleu);font-size:18px}
+.accueil p{margin:0 0 14px}
+.accueil .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tuto p{margin:0 0 8px}
+.tuto ul{margin:0 0 8px;padding-left:20px}
+.tuto .ex{background:var(--clair);border-radius:6px;padding:6px 10px;margin:0 0 8px}
+.figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 10px}
+.fig{display:flex;gap:8px;align-items:center;font-size:13px}
+.fig svg{width:44px;height:24px;flex:none}
+.tnum{text-align:center;font-size:12px;color:var(--mut)}
+/* impression */
+#impression{display:none}
+@media print{
+  html,body{height:auto;background:#fff}
+  body.impression #app,body.impression .ov,body.impression #toast{display:none!important}
+  body.impression #impression{display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact;color:#000}
+  .pp{display:flex;flex-direction:column;width:100%;overflow:hidden;gap:2mm}
+  .pp.brk{break-after:page;page-break-after:always}
+  .pp .eh{display:flex;align-items:center;gap:6mm;border-bottom:.4mm solid #34495e;padding-bottom:2mm;flex:none}
+  .pp .eh img{max-height:14mm;max-width:40mm}
+  .pp .eh h1{font-size:16pt;margin:0;color:#34495e}
+  .pp .eh .meta{font-size:9pt;color:#444;margin-left:auto;text-align:right}
+  .pp .tb{position:relative;flex:1;min-height:0}
+  .pp .tb svg{position:absolute;left:0;top:0;width:100%;height:100%}
+  .pp .lg{flex:none;display:flex;flex-wrap:wrap;gap:1.5mm 6mm;font-size:8pt;border-top:.2mm solid #999;padding-top:1.5mm}
+  .pp .lg .it{display:flex;align-items:center;gap:1.5mm}
+  .pp .lg svg{width:11mm;height:6mm}
+  .pp .pied,.pied2{flex:none;font-size:8pt;color:#444;text-align:center;border-top:.2mm solid #999;padding-top:1mm}
+  .p2 table{width:100%;border-collapse:collapse;font-size:9pt}
+  .p2 th,.p2 td{border:.2mm solid #888;padding:1mm 1.5mm;text-align:left;vertical-align:top}
+  .p2 th{background:#e8edf2}
+  .p2 thead{display:table-header-group}
+  .p2 tfoot{display:table-footer-group}
+  .p2 tr{break-inside:avoid;page-break-inside:avoid}
+  .p2 h2{font-size:13pt;margin:0 0 2mm;color:#34495e}
+  .p2 td.nt{white-space:pre-wrap}
+  .p2 h2.sp{margin-top:6mm}
+  .p2 td.cp{width:7mm;text-align:center}
+  .pd{width:3mm;height:3mm}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar">
+    <h1 id="titre">Arbre familial</h1>
+    <span id="dirty">● modifications non enregistrées</span>
+    <button class="btn" id="bNouveau">Nouveau dossier</button>
+    <button class="btn" id="bOuvrir">Ouvrir</button>
+    <button class="btn acc" id="bEnreg">Enregistrer</button>
+    <button class="btn" id="bDossier">Dossier</button>
+    <button class="btn" id="bPdf">Exporter en PDF</button>
+    <button class="btn" id="bAide">? Aide</button>
+  </div>
+  <div id="bandeau" role="status"><b>Exemple fictif</b> : ces personnes et situations sont inventées. Utilisez « Nouveau dossier » pour commencer votre propre dossier.</div>
+  <div id="main">
+    <aside id="side">
+      <h2>Personnes <span><button class="btn pet" id="bLien">+ Lien</button> <button class="btn pet acc" id="bAjP">+ Personne</button></span></h2>
+      <input id="rech" type="search" placeholder="Rechercher…" aria-label="Rechercher une personne">
+      <ul class="liste" id="lp"></ul>
+      <h2>Foyers <button class="btn pet" id="bAjF">+</button></h2>
+      <ul class="liste" id="lf"></ul>
+      <h2>Relations <button class="btn pet" id="bAjR">+</button></h2>
+      <ul class="liste" id="lr"></ul>
+    </aside>
+    <section id="vue">
+      <svg id="arbre" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arbre familial"><g id="vp"></g></svg>
+      <div id="vide"><div class="accueil"><h2>Bienvenue</h2><p>Aucun dossier n'est ouvert. Par où souhaitez-vous commencer ?<br><span class="aide">Rien n'est enregistré automatiquement : pensez à utiliser « Enregistrer ».</span></p>
+        <div class="actions"><button class="btn acc" id="aPers">Ajouter une première personne</button><button class="btn" id="aOuvrir">Ouvrir un dossier</button><button class="btn" id="aAide">Voir le tutoriel</button><button class="btn" id="aEx">Charger l'exemple</button></div></div></div>
+      <div id="ctrl">
+        <label><input type="checkbox" id="cFoyers" checked> Foyers</label>
+        <button class="btn pet" id="bVueRel" aria-pressed="false" title="Afficher toutes les relations émotionnelles en arcs">Vue relations</button>
+        <span class="sp"></span>
+        <button class="btn pet" id="bAlertes" style="display:none"></button>
+        <button class="btn pet" id="zMoins" title="Réduire">−</button>
+        <button class="btn pet" id="zPlus" title="Agrandir">+</button>
+        <button class="btn pet" id="zFit" title="Recentrer">⤢</button>
+      </div>
+    </section>
+  </div>
+  <div id="fiche"></div>
+</div>
+<div id="toast" role="status"></div>
+<div id="impression"></div>
+<input type="file" id="fOuvrir" accept=".json,application/json" style="display:none">
+<input type="file" id="fLogo" accept="image/png,image/jpeg" style="display:none">
+
+<script>
+/* ===== Modèle, moteur de parenté, disposition (logique pure, sans DOM) ===== */
+/* @core-start */
+var Core=(function(){
+'use strict';
+var STATUTS=[['marie','Marié(e)s'],['pacse','Pacsé(e)s'],['couple','En couple'],['separe','Séparé(e)s'],['divorce','Divorcé(e)s'],['veuf','Veuf / veuve']];
+var TYPES_FIL=[['biologique','Biologique'],['adoptif','Adoptif'],['accueil',"Famille d'accueil / tiers"],['beau-parent','Beau-parent (par alliance)']];
+var TYPES_REL=[['proche','Relation proche'],['fusionnelle','Relation fusionnelle'],['distante','Relation distante'],['conflit','Conflit'],['rupture','Rupture / coupure'],['violence','Violence'],['emprise','Emprise / maltraitance']];
+var TYPES_LIEN=[['parent','père / mère de'],['enfant','fils / fille de'],['fratrie','frère / sœur de'],['demifratrie','demi-frère / demi-sœur de'],['alliance','frère / sœur par alliance de'],['conjoint','conjoint(e) de'],['exconjoint','ex-conjoint(e) de'],['grandparent','grand-père / grand-mère de'],['petitenfant','petit-fils / petite-fille de'],['oncle','oncle / tante de'],['neveu','neveu / nièce de'],['cousin','cousin(e) de'],['beauparent','beau-père / belle-mère de'],['beaufrere','beau-frère / belle-sœur de'],['gendre','gendre / belle-fille de'],['adopte','enfant adopté / placé de'],['libre','autre lien (libre)']];
+var TP=['biologique','adoptif'];
+var BIO=['biologique'];
+
+function pad(n){return (n<10?'0':'')+n;}
+function aujourdhui(){var n=new Date();return n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate());}
+function nouveauDossier(){return {version:1,dossier:{titre:'Situation familiale de …',creeLe:aujourdhui(),modifieLe:aujourdhui(),auteur:'',logo:null},personnes:[],unions:[],filiations:[],foyers:[],relations:[],liensLibres:[]};}
+function nextId(liste,pre){var m=0;liste.forEach(function(x){var n=parseInt(String(x.id).slice(pre.length),10);if(n>m)m=n;});return pre+(m+1);}
+function pers(d,id){for(var i=0;i<d.personnes.length;i++)if(d.personnes[i].id===id)return d.personnes[i];return null;}
+function snapshot(d){return JSON.stringify(d);}
+function restaurer(d,snap){var o=JSON.parse(snap);Object.keys(d).forEach(function(k){delete d[k];});Object.keys(o).forEach(function(k){d[k]=o[k];});}
+function numOuNull(v){if(v===null||v===undefined||v==='')return null;var n=Number(v);return isNaN(n)?null:n;}
+
+function creerPersonne(d,props){
+  var p={id:nextId(d.personnes,'p'),prenom:'',nom:'',nomNaissance:'',sexe:'X',dateNaissance:null,age:null,decede:false,dateDeces:null,ageDeces:null,profession:'',foyer:null,notes:'',concerne:false,inconnu:false};
+  Object.keys(props||{}).forEach(function(k){p[k]=props[k];});
+  d.personnes.push(p);return p;
+}
+function creerInconnu(d,prenom,sexe){return creerPersonne(d,{prenom:prenom,sexe:sexe||'X',inconnu:true}).id;}
+
+function parentsDe(d,id,types){return d.filiations.filter(function(f){return f.enfant===id&&(!types||types.indexOf(f.type)>=0);}).map(function(f){return f.parent;});}
+function enfantsDe(d,id,types){return d.filiations.filter(function(f){return f.parent===id&&(!types||types.indexOf(f.type)>=0);}).map(function(f){return f.enfant;});}
+function trouverUnion(d,a,b){for(var i=0;i<d.unions.length;i++){var u=d.unions[i];if((u.p1===a&&u.p2===b)||(u.p1===b&&u.p2===a))return u;}return null;}
+function conjointsDe(d,id){var r=[];d.unions.forEach(function(u){if(u.p1===id)r.push({id:u.p2,statut:u.statut,union:u.id});else if(u.p2===id)r.push({id:u.p1,statut:u.statut,union:u.id});});return r;}
+function fratrie(d,id){var pa=parentsDe(d,id,TP),res=[];d.personnes.forEach(function(p){if(p.id===id)return;var pb=parentsDe(d,p.id,TP);if(pb.some(function(x){return pa.indexOf(x)>=0;}))res.push(p.id);});return res;}
+function estAncetre(d,anc,id){var vu={},pile=[id];while(pile.length){var x=pile.pop(),ps=parentsDe(d,x);for(var i=0;i<ps.length;i++){if(ps[i]===anc)return true;if(!vu[ps[i]]){vu[ps[i]]=1;pile.push(ps[i]);}}}return false;}
+function profondeur(d,anc,id){ /* nb de générations entre anc (ancêtre) et id, 0 si non ancêtre */
+  var front=[id],niv=0,vu={};
+  while(front.length&&niv<12){niv++;var nx=[];for(var i=0;i<front.length;i++){var ps=parentsDe(d,front[i],TP);for(var j=0;j<ps.length;j++){if(ps[j]===anc)return niv;if(!vu[ps[j]]){vu[ps[j]]=1;nx.push(ps[j]);}}}front=nx;}
+  return 0;
+}
+
+function ajouterUnion(d,a,b,statut){
+  if(a===b)throw new Error('Une personne ne peut pas être unie à elle-même.');
+  if(!pers(d,a)||!pers(d,b))throw new Error('Personne introuvable.');
+  statut=statut||'couple';
+  var ex=trouverUnion(d,a,b);if(ex){ex.statut=statut;return ex;}
+  var u={id:nextId(d.unions,'u'),p1:a,p2:b,statut:statut};d.unions.push(u);return u;
+}
+function ajouterFiliation(d,parent,enfant,type){
+  type=type||'biologique';
+  if(parent===enfant)throw new Error('Une personne ne peut pas être son propre parent.');
+  if(!pers(d,parent)||!pers(d,enfant))throw new Error('Personne introuvable.');
+  var ex=d.filiations.filter(function(f){return f.parent===parent&&f.enfant===enfant;})[0];
+  if(ex)return ex;
+  if(estAncetre(d,enfant,parent))throw new Error('Lien impossible : '+nomAffiche(pers(d,enfant))+' est déjà un ancêtre de '+nomAffiche(pers(d,parent))+' (cycle).');
+  if(type==='biologique'&&parentsDe(d,enfant,BIO).length>=2)throw new Error(nomAffiche(pers(d,enfant))+' a déjà deux parents biologiques.');
+  var f={id:nextId(d.filiations,'f'),parent:parent,enfant:enfant,type:type};d.filiations.push(f);return f;
+}
+function nettoyerInconnus(d){
+  var ch=true;
+  while(ch){ch=false;
+    for(var i=0;i<d.personnes.length;i++){var p=d.personnes[i];if(!p.inconnu)continue;
+      var enf=d.filiations.some(function(f){return f.parent===p.id;});
+      var partConnu=d.unions.some(function(u){var o=u.p1===p.id?u.p2:(u.p2===p.id?u.p1:null);return o&&pers(d,o)&&!pers(d,o).inconnu;});
+      if(!enf&&!partConnu){retirer(d,p.id);ch=true;break;}
+    }
+  }
+}
+function retirer(d,id){
+  d.personnes=d.personnes.filter(function(p){return p.id!==id;});
+  d.unions=d.unions.filter(function(u){return u.p1!==id&&u.p2!==id;});
+  d.filiations=d.filiations.filter(function(f){return f.parent!==id&&f.enfant!==id;});
+  d.relations=d.relations.filter(function(r){return r.de!==id&&r.vers!==id;});
+  d.liensLibres=d.liensLibres.filter(function(l){return l.de!==id&&l.vers!==id;});
+}
+function supprimerPersonne(d,id){retirer(d,id);nettoyerInconnus(d);}
+/* Remplace la personne « inc » (en général inconnue) par « cible » : tous ses liens sont transférés, puis elle est supprimée. */
+function remplacerPersonne(d,inc,cible){
+  var I=pers(d,inc),C=pers(d,cible);
+  if(!I||!C)throw new Error('Personne introuvable.');
+  if(inc===cible)throw new Error('Choisissez une autre personne.');
+  var snap=snapshot(d);
+  try{
+    d.filiations.forEach(function(f){
+      if(f.parent===inc){if(f.enfant===cible)throw new Error(nomAffiche(C)+' ne peut pas être son propre parent.');f.parent=cible;}
+      if(f.enfant===inc){if(f.parent===cible)throw new Error(nomAffiche(C)+' ne peut pas être son propre enfant.');f.enfant=cible;}
+    });
+    var vu={};d.filiations=d.filiations.filter(function(f){var k=f.parent+'>'+f.enfant;if(vu[k])return false;vu[k]=1;return true;});
+    d.personnes.forEach(function(p){
+      if(parentsDe(d,p.id,BIO).length>2)throw new Error(nomAffiche(p)+' aurait plus de deux parents biologiques.');
+      if(estAncetre(d,p.id,p.id))throw new Error('Remplacement impossible : il créerait une boucle dans l\'arbre (une personne deviendrait son propre ancêtre).');
+    });
+    d.unions.forEach(function(u){u._o=(u.p1!==inc&&u.p2!==inc);if(u.p1===inc)u.p1=cible;if(u.p2===inc)u.p2=cible;});
+    var vu2={};
+    d.unions.filter(function(u){return u._o;}).concat(d.unions.filter(function(u){return !u._o;})).forEach(function(u){
+      if(u.p1===u.p2){u._x=1;return;}var k=u.p1<u.p2?u.p1+'|'+u.p2:u.p2+'|'+u.p1;if(vu2[k])u._x=1;else vu2[k]=1;});
+    d.unions=d.unions.filter(function(u){var x=u._x;delete u._o;delete u._x;return !x;});
+    ['relations','liensLibres'].forEach(function(k){
+      d[k].forEach(function(r){if(r.de===inc)r.de=cible;if(r.vers===inc)r.vers=cible;});
+      d[k]=d[k].filter(function(r){return r.de!==r.vers;});
+    });
+    if(!C.foyer&&I.foyer)C.foyer=I.foyer;
+    if(I.notes&&!I.inconnu)C.notes=(C.notes?C.notes+'\n':'')+I.notes;
+    d.personnes=d.personnes.filter(function(p){return p.id!==inc;});
+    nettoyerInconnus(d);
+  }catch(e){restaurer(d,snap);throw e;}
+}
+function supprimerUnion(d,uid){d.unions=d.unions.filter(function(u){return u.id!==uid;});nettoyerInconnus(d);}
+function supprimerFiliation(d,fid){d.filiations=d.filiations.filter(function(f){return f.id!==fid;});nettoyerInconnus(d);}
+
+/* ----- Âge et noms ----- */
+function calculerAge(p,ref){
+  ref=ref||new Date();
+  if(p.dateNaissance){
+    var b=new Date(p.dateNaissance+'T00:00:00');if(isNaN(b.getTime()))return null;
+    var fin=ref;
+    if(p.decede){
+      if(p.dateDeces){var dd=new Date(p.dateDeces+'T00:00:00');if(!isNaN(dd.getTime()))fin=dd;}
+      else if(numOuNull(p.ageDeces)!==null)return numOuNull(p.ageDeces);
+    }
+    var a=fin.getFullYear()-b.getFullYear(),m=fin.getMonth()-b.getMonth();
+    if(m<0||(m===0&&fin.getDate()<b.getDate()))a--;
+    return a<0?null:a;
+  }
+  if(p.decede&&numOuNull(p.ageDeces)!==null)return numOuNull(p.ageDeces);
+  return numOuNull(p.age);
+}
+function libelleAge(p,ref){
+  var a=calculerAge(p,ref);
+  if(a===null)return p.decede?'†':'';
+  return (p.decede?'† ':'')+a+' an'+(a>=2?'s':'');
+}
+function nomAffiche(p,anon){
+  if(!p)return '';
+  if(p.inconnu)return p.prenom||'Inconnu(e)';
+  if(anon){var i=(p.prenom||'').trim().charAt(0),n=(p.nom||'').trim().charAt(0);return ((i?i.toUpperCase()+'.':'')+(n?' '+n.toUpperCase()+'.':'')).trim()||'?';}
+  return ((p.prenom||'')+' '+(p.nom||'').toUpperCase()).trim();
+}
+
+/* ----- Liens « métier » -> filiations et unions ----- */
+function choisir(o,cle,ids,label){
+  if(ids.length===0)return null;
+  if(o[cle]&&ids.indexOf(o[cle])>=0)return o[cle];
+  if(ids.length===1)return ids[0];
+  throw new Error('Précision requise : '+label+'.');
+}
+function assurerParents(d,id){
+  var ps=parentsDe(d,id,BIO).slice();
+  while(ps.length<2){
+    var n=creerInconnu(d,'Parent inconnu');
+    ajouterFiliation(d,n,id,'biologique');
+    if(ps.length===1&&!trouverUnion(d,ps[0],n))ajouterUnion(d,ps[0],n,'couple');
+    ps.push(n);
+  }
+  return ps;
+}
+function lierFratrie(d,x,y){
+  var px=parentsDe(d,x,BIO),py=parentsDe(d,y,BIO);
+  var ref=py.length?y:(px.length?x:y),autre=ref===y?x:y;
+  assurerParents(d,ref).forEach(function(p){ajouterFiliation(d,p,autre,'biologique');});
+}
+function faire(d,a,type,b,o){
+  var bp=function(id){return parentsDe(d,id,BIO);};
+  var parentDe=function(id,cle){var c=choisir(o,cle,bp(id),'quel parent');if(c!==null)return c;var n=creerInconnu(d,'Parent inconnu');ajouterFiliation(d,n,id,'biologique');return n;};
+  var conjointDe=function(id,cle){var c=choisir(o,cle,conjointsDe(d,id).map(function(x){return x.id;}),'quel conjoint');if(c!==null)return c;var n=creerInconnu(d,'Conjoint inconnu');ajouterUnion(d,id,n,'couple');return n;};
+  var enfantDe=function(id){var c=choisir(o,'intermediaire',enfantsDe(d,id,BIO),'quel enfant');if(c!==null)return c;var n=creerInconnu(d,'Enfant inconnu');ajouterFiliation(d,id,n,'biologique');return n;};
+  var s;
+  switch(type){
+    case 'parent':ajouterFiliation(d,a,b,o.filiation||'biologique');break;
+    case 'enfant':{ajouterFiliation(d,b,a,o.filiation||'biologique');
+      var ap=o.autreParent;
+      if(ap&&ap!=='__aucun'&&ap!==a&&pers(d,ap)&&parentsDe(d,a).indexOf(ap)<0)ajouterFiliation(d,ap,a,o.filiation||'biologique');
+      break;}
+    case 'fratrie':lierFratrie(d,a,b);break;
+    case 'demifratrie':{
+      var pb=bp(b),pa=bp(a),opts=pb.length?pb:pa,ref=pb.length?b:(pa.length?a:null);
+      var cc;
+      if(!ref){cc=creerInconnu(d,'Parent inconnu');ajouterFiliation(d,cc,a,'biologique');ajouterFiliation(d,cc,b,'biologique');}
+      else{cc=choisir(o,'parentCommun',opts,'quel est le parent commun');ajouterFiliation(d,cc,ref===b?a:b,'biologique');}
+      [a,b].forEach(function(x){if(bp(x).length<2){var n2=creerInconnu(d,'Parent inconnu');ajouterFiliation(d,n2,x,'biologique');if(!trouverUnion(d,cc,n2))ajouterUnion(d,cc,n2,'couple');}});
+      break;}
+    case 'alliance':{
+      var P=parentDe(b,'parentB'),Q=parentDe(a,'parentA');
+      if(P===Q)throw new Error('Ces deux personnes ont déjà un parent commun.');
+      if(!trouverUnion(d,P,Q))ajouterUnion(d,P,Q,'couple');
+      break;}
+    case 'conjoint':case 'exconjoint':ajouterUnion(d,a,b,o.statut||(type==='exconjoint'?'divorce':'couple'));break;
+    case 'grandparent':ajouterFiliation(d,a,parentDe(b,'intermediaire'),'biologique');break;
+    case 'petitenfant':ajouterFiliation(d,enfantDe(b),a,'biologique');break;
+    case 'oncle':lierFratrie(d,a,parentDe(b,'parentB'));break;
+    case 'neveu':
+      s=choisir(o,'intermediaire',fratrie(d,b),'quel frère ou quelle sœur');
+      if(s===null){s=creerInconnu(d,'Frère/sœur inconnu(e)');lierFratrie(d,s,b);}
+      ajouterFiliation(d,s,a,'biologique');break;
+    case 'cousin':{
+      var P2=parentDe(b,'parentB'),pa2=bp(a);
+      if(!pa2.length&&o.oncle&&o.oncle!=='__nouveau'&&fratrie(d,P2).indexOf(o.oncle)>=0){ajouterFiliation(d,o.oncle,a,'biologique');break;}
+      var Q2=pa2.length?choisir(o,'parentA',pa2,'quel parent'):null;
+      if(Q2===null){Q2=creerInconnu(d,'Parent inconnu');ajouterFiliation(d,Q2,a,'biologique');}
+      lierFratrie(d,Q2,P2);break;}
+    case 'beauparent':
+      if(o.mode==='parentConjoint'){s=conjointDe(b,'conjointB');ajouterFiliation(d,a,s,'biologique');}
+      else if(o.mode==='conjointParent'){s=parentDe(b,'parentB');if(!trouverUnion(d,a,s))ajouterUnion(d,a,s,o.statut||'couple');}
+      else throw new Error('Précision requise : type de beau-parent.');
+      break;
+    case 'beaufrere':
+      if(o.mode==='fratrieConjoint'){s=conjointDe(b,'conjointB');lierFratrie(d,a,s);}
+      else if(o.mode==='conjointFratrie'){
+        s=choisir(o,'intermediaire',fratrie(d,b),'quel frère ou quelle sœur');
+        if(s===null){s=creerInconnu(d,'Frère/sœur inconnu(e)');lierFratrie(d,s,b);}
+        if(!trouverUnion(d,a,s))ajouterUnion(d,a,s,'couple');
+      }else throw new Error('Précision requise : type de beau-frère / belle-sœur.');
+      break;
+    case 'gendre':s=enfantDe(b);if(!trouverUnion(d,a,s))ajouterUnion(d,a,s,'couple');break;
+    case 'adopte':ajouterFiliation(d,b,a,o.filiation||'adoptif');break;
+    case 'libre':
+      if(!o.libelle||!String(o.libelle).trim())throw new Error('Le libellé du lien libre est obligatoire.');
+      d.liensLibres.push({id:nextId(d.liensLibres,'l'),de:a,vers:b,libelle:String(o.libelle).trim()});break;
+    default:throw new Error('Type de lien inconnu : '+type);
+  }
+}
+function ajouterLien(d,a,type,b,o){
+  o=o||{};
+  if(a===b)throw new Error('Une personne ne peut pas être liée à elle-même.');
+  if(!pers(d,a)||!pers(d,b))throw new Error('Personne introuvable.');
+  var snap=snapshot(d);
+  try{faire(d,a,type,b,o);}catch(e){restaurer(d,snap);throw e;}
+}
+/* Sous-questions nécessaires pour un type de lien (a peut être null si la personne est à créer) */
+function questions(d,type,a,b,o){
+  o=o||{};var q=[];
+  var nb=b?nomAffiche(pers(d,b)):'la personne';
+  var bp=function(id){return id?parentsDe(d,id,BIO):[];};
+  var nm=function(id){return nomAffiche(pers(d,id));};
+  var ask=function(cle,label,ids){if(ids.length>=2)q.push({cle:cle,label:label,options:ids.map(function(i){return {v:i,l:nm(i)};})});};
+  var conj=function(id){return id?conjointsDe(d,id).map(function(x){return x.id;}):[];};
+  switch(type){
+    case 'enfant':{var cj=conj(b);if(cj.length)q.push({cle:'autreParent',label:'Qui est l\'autre parent ?',options:cj.map(function(i){return {v:i,l:nm(i)};}).concat([{v:'__aucun',l:'Non renseigné / autre personne'}])});break;}
+    case 'demifratrie':ask('parentCommun','Quel est le parent commun ?',bp(b).length?bp(b):bp(a));break;
+    case 'alliance':ask('parentB','Quel parent de '+nb+' est en couple avec le parent de l\'autre personne ?',bp(b));ask('parentA','Quel parent de l\'autre personne ?',bp(a));break;
+    case 'grandparent':ask('intermediaire','Par quel parent de '+nb+' ?',bp(b));break;
+    case 'petitenfant':ask('intermediaire','Par quel enfant de '+nb+' ?',enfantsDe(d,b,BIO));break;
+    case 'oncle':ask('parentB','Frère ou sœur de quel parent de '+nb+' ?',bp(b));break;
+    case 'neveu':ask('intermediaire','Enfant de quel frère ou sœur de '+nb+' ?',fratrie(d,b));break;
+    case 'cousin':{
+      ask('parentB','Quel parent de '+nb+' ?',bp(b));ask('parentA','Quel parent de l\'autre personne ?',bp(a));
+      var pB=bp(b),pc=(o.parentB&&pB.indexOf(o.parentB)>=0)?o.parentB:(pB.length===1?pB[0]:(pB.length?pB[0]:null));
+      if(pc&&!bp(a).length){var fr2=fratrie(d,pc);if(fr2.length)q.push({cle:'oncle',label:'Enfant de quel frère ou sœur de '+nm(pc)+' ?',options:fr2.map(function(i){return {v:i,l:nm(i)};}).concat([{v:'__nouveau',l:'Un(e) autre, non saisi(e)'}])});}
+      break;}
+    case 'beauparent':
+      q.push({cle:'mode',label:'Précisez le lien',options:[{v:'conjointParent',l:'Conjoint(e) d\'un parent de '+nb},{v:'parentConjoint',l:'Parent du conjoint de '+nb}]});
+      if((o.mode||'conjointParent')==='conjointParent')ask('parentB','Quel parent de '+nb+' ?',bp(b));else ask('conjointB','Quel conjoint de '+nb+' ?',conj(b));
+      break;
+    case 'beaufrere':
+      q.push({cle:'mode',label:'Précisez le lien',options:[{v:'conjointFratrie',l:'Conjoint(e) d\'un frère ou d\'une sœur de '+nb},{v:'fratrieConjoint',l:'Frère ou sœur du conjoint de '+nb}]});
+      if((o.mode||'conjointFratrie')==='conjointFratrie')ask('intermediaire','Quel frère ou quelle sœur de '+nb+' ?',fratrie(d,b));else ask('conjointB','Quel conjoint de '+nb+' ?',conj(b));
+      break;
+    case 'gendre':ask('intermediaire','Conjoint(e) de quel enfant de '+nb+' ?',enfantsDe(d,b,BIO));break;
+  }
+  return q;
+}
+
+/* ----- Libellé d'un lien : a est le ... de b (jamais stocké) ----- */
+function decrireLien(d,a,b){
+  if(a===b)return null;
+  var A=pers(d,a),B=pers(d,b);if(!A||!B)return null;
+  var s=A.sexe;
+  var pr=function(m,f){return s==='M'?m:(s==='F'?f:m+'/'+f);};
+  var f1=d.filiations.filter(function(f){return f.parent===a&&f.enfant===b;})[0];
+  if(f1){
+    if(f1.type==='adoptif')return pr('père adoptif','mère adoptive');
+    if(f1.type==='accueil')return pr("père d'accueil","mère d'accueil");
+    if(f1.type==='beau-parent')return pr('beau-père','belle-mère');
+    return pr('père','mère');
+  }
+  var f2=d.filiations.filter(function(f){return f.parent===b&&f.enfant===a;})[0];
+  if(f2){
+    if(f2.type==='adoptif')return pr('fils adoptif','fille adoptive');
+    if(f2.type==='accueil')return pr('enfant accueilli','enfant accueillie');
+    if(f2.type==='beau-parent')return pr('beau-fils','belle-fille');
+    return pr('fils','fille');
+  }
+  var u=trouverUnion(d,a,b);
+  if(u){
+    switch(u.statut){
+      case 'marie':return pr('époux','épouse');
+      case 'pacse':return pr('partenaire pacsé','partenaire pacsée');
+      case 'separe':return pr('ex-compagnon','ex-compagne');
+      case 'divorce':return pr('ex-époux','ex-épouse');
+      case 'veuf':return pr('époux','épouse')+' (veuvage)';
+      default:return pr('compagnon','compagne');
+    }
+  }
+  var pa=parentsDe(d,a,TP),pb=parentsDe(d,b,TP);
+  var comm=pa.filter(function(x){return pb.indexOf(x)>=0;}).length;
+  if(comm>=2)return pr('frère','sœur');
+  if(comm===1){
+    if(pa.length>=2&&pb.length>=2)return pr('demi-frère','demi-sœur');
+    var cp=pers(d,pa.filter(function(x){return pb.indexOf(x)>=0;})[0]);
+    return pr('frère','sœur')+(cp&&cp.sexe==='F'?' (même mère)':(cp&&cp.sexe==='M'?' (même père)':' (un parent commun)'));
+  }
+  var fr=function(x,y){if(x===y)return false;var px=parentsDe(d,x,TP),py=parentsDe(d,y,TP);return px.some(function(z){return py.indexOf(z)>=0;});};
+  var un=function(x,y){return !!trouverUnion(d,x,y);};
+  if(pa.some(function(x){return pb.some(function(y){return un(x,y);});}))return pr('frère par alliance','sœur par alliance');
+  var n=profondeur(d,a,b);
+  if(n===2)return pr('grand-père','grand-mère');
+  if(n===3)return pr('arrière-grand-père','arrière-grand-mère');
+  if(n>=4)return pr('aïeul','aïeule')+' ('+n+' générations)';
+  n=profondeur(d,b,a);
+  if(n===2)return pr('petit-fils','petite-fille');
+  if(n===3)return pr('arrière-petit-fils','arrière-petite-fille');
+  if(n>=4)return 'descendant(e) ('+n+' générations)';
+  if(pb.some(function(p){return fr(a,p);}))return pr('oncle','tante');
+  if(pa.some(function(p){return fr(b,p);}))return pr('neveu','nièce');
+  if(pa.some(function(p){return pb.some(function(q){return fr(p,q);});}))return pr('cousin','cousine');
+  var cb=conjointsDe(d,b).map(function(x){return x.id;}),ca=conjointsDe(d,a).map(function(x){return x.id;});
+  if(pb.some(function(p){return un(a,p);}))return pr('beau-père','belle-mère');
+  if(pa.some(function(p){return un(b,p);}))return pr('beau-fils','belle-fille')+' (enfant du conjoint)';
+  if(cb.some(function(c){return parentsDe(d,c,TP).indexOf(a)>=0;}))return pr('beau-père','belle-mère');
+  if(ca.some(function(c){return parentsDe(d,c,TP).indexOf(b)>=0;}))return pr('gendre','belle-fille (bru)');
+  if(cb.some(function(c){return fr(a,c);})||fratrie(d,b).some(function(sb){return un(a,sb);}))return pr('beau-frère','belle-sœur');
+  var l=d.liensLibres.filter(function(x){return x.de===a&&x.vers===b;})[0];
+  if(l)return l.libelle;
+  l=d.liensLibres.filter(function(x){return x.de===b&&x.vers===a;})[0];
+  if(l)return 'lié(e) à '+nomAffiche(B)+' (« '+l.libelle+' »)';
+  return null;
+}
+function article(label,sexe){
+  if(/^[aeiouhéèêàâîïôûAEIOUH]/.test(label))return "l'";
+  return sexe==='F'?'la ':(sexe==='M'?'le ':'le/la ');
+}
+function phrase(d,a,b){
+  var l=decrireLien(d,a,b);if(!l)return null;
+  var A=pers(d,a),B=pers(d,b);
+  if(l.indexOf('lié(e)')===0)return nomAffiche(A)+' est '+l;
+  return nomAffiche(A)+' est '+article(l,A.sexe)+l+' de '+nomAffiche(B);
+}
+
+/* ----- Validation et cohérence ----- */
+function normaliser(x){
+  ['personnes','unions','filiations','foyers','relations','liensLibres'].forEach(function(k){if(!Array.isArray(x[k]))x[k]=[];});
+  var base=nouveauDossier().dossier;x.dossier=x.dossier||{};
+  Object.keys(base).forEach(function(k){if(x.dossier[k]===undefined)x.dossier[k]=base[k];});
+  x.personnes=x.personnes.map(function(p){var q=creerPersonne({personnes:[]},{});Object.keys(p).forEach(function(k){q[k]=p[k];});return q;});
+  return x;
+}
+function valider(x){
+  var e=[];
+  if(!x||typeof x!=='object'||Array.isArray(x))return {ok:false,erreurs:['Le fichier ne contient pas un dossier valide.']};
+  if(x.version!==1)e.push('Version de fichier non prise en charge ('+x.version+').');
+  if(!x.dossier||typeof x.dossier!=='object')e.push('La section « dossier » est absente.');
+  if(!Array.isArray(x.personnes))e.push('La liste des personnes est absente.');
+  ['unions','filiations','foyers','relations','liensLibres'].forEach(function(k){if(x[k]!==undefined&&!Array.isArray(x[k]))e.push('La section « '+k+' » est invalide.');});
+  if(e.length)return {ok:false,erreurs:e};
+  var L=function(k){return x[k]||[];};
+  var unique=function(liste,nom){var vu={};liste.forEach(function(o){if(!o||typeof o.id!=='string'||!o.id){e.push(nom+' sans identifiant.');return;}if(vu[o.id])e.push('Identifiant en double ('+nom+') : '+o.id);vu[o.id]=1;});return vu;};
+  var ip=unique(x.personnes,'personne'),ih=unique(L('foyers'),'foyer');
+  unique(L('unions'),'union');unique(L('filiations'),'filiation');unique(L('relations'),'relation');unique(L('liensLibres'),'lien libre');
+  var dateOk=function(v){return v===null||v===undefined||v===''||/^\d{4}-\d{2}-\d{2}$/.test(v);};
+  x.personnes.forEach(function(p){
+    if(!p||typeof p!=='object')return;
+    if(typeof p.prenom!=='string')e.push('Prénom invalide pour '+p.id+'.');
+    if(['M','F','X'].indexOf(p.sexe)<0)e.push('Sexe invalide pour '+p.id+'.');
+    if(!dateOk(p.dateNaissance)||!dateOk(p.dateDeces))e.push('Date invalide pour '+p.id+'.');
+    if(p.foyer&&!ih[p.foyer])e.push('Foyer inconnu ('+p.foyer+') pour '+p.id+'.');
+  });
+  var stat=STATUTS.map(function(s){return s[0];}),tf=TYPES_FIL.map(function(s){return s[0];}),tr=TYPES_REL.map(function(s){return s[0];});
+  L('unions').forEach(function(u){
+    if(!ip[u.p1]||!ip[u.p2])e.push('Union '+u.id+' : personne inconnue.');
+    else if(u.p1===u.p2)e.push('Union '+u.id+' : personne unie à elle-même.');
+    if(stat.indexOf(u.statut)<0)e.push('Union '+u.id+' : statut invalide.');
+  });
+  var bio={};
+  L('filiations').forEach(function(f){
+    if(!ip[f.parent]||!ip[f.enfant])e.push('Filiation '+f.id+' : personne inconnue.');
+    else if(f.parent===f.enfant)e.push('Filiation '+f.id+' : parent et enfant identiques.');
+    if(tf.indexOf(f.type)<0)e.push('Filiation '+f.id+' : type invalide.');
+    if(f.type==='biologique'){bio[f.enfant]=(bio[f.enfant]||0)+1;if(bio[f.enfant]===3)e.push('Plus de 2 parents biologiques pour '+f.enfant+'.');}
+  });
+  L('relations').forEach(function(r){if(!ip[r.de]||!ip[r.vers])e.push('Relation '+r.id+' : personne inconnue.');if(tr.indexOf(r.type)<0)e.push('Relation '+r.id+' : type invalide.');});
+  L('liensLibres').forEach(function(l){if(!ip[l.de]||!ip[l.vers])e.push('Lien libre '+l.id+' : personne inconnue.');});
+  if(!e.length){ /* cycles : tri topologique */
+    var deg={},enf={};x.personnes.forEach(function(p){deg[p.id]=0;enf[p.id]=[];});
+    L('filiations').forEach(function(f){deg[f.enfant]++;enf[f.parent].push(f.enfant);});
+    var q=Object.keys(deg).filter(function(k){return deg[k]===0;}),n=0;
+    while(q.length){var k=q.pop();n++;enf[k].forEach(function(c){if(--deg[c]===0)q.push(c);});}
+    if(n<x.personnes.length)e.push('Les filiations contiennent un cycle (une personne serait son propre ancêtre).');
+  }
+  return {ok:e.length===0,erreurs:e};
+}
+function coherence(d,ref){
+  var al=[];ref=ref||new Date();
+  var nais=function(p){
+    if(p.dateNaissance){var b=new Date(p.dateNaissance+'T00:00:00');if(!isNaN(b.getTime()))return b.getTime();}
+    var a=numOuNull(p.age);if(a!==null&&!p.decede)return ref.getTime()-a*365.25*86400000;return null;
+  };
+  d.filiations.forEach(function(f){
+    var P=pers(d,f.parent),E=pers(d,f.enfant);if(!P||!E)return;
+    var bp=nais(P),be=nais(E);
+    if(bp!==null&&be!==null){
+      if(bp>=be)al.push(nomAffiche(P)+' est plus jeune que son enfant '+nomAffiche(E)+'.');
+      else if((be-bp)/(365.25*86400000)<12)al.push('Écart d\'âge inférieur à 12 ans entre '+nomAffiche(P)+' et son enfant '+nomAffiche(E)+'.');
+    }
+  });
+  return al;
+}
+
+/* ----- Disposition par générations ----- */
+function calculerDisposition(d,opt){
+  var W=130,PITCH=150,GAP=40,ROWH=210,MARGIN=60,SYM=22,Y0=MARGIN+30;
+  var ids=d.personnes.map(function(p){return p.id;}),idx={};ids.forEach(function(id,i){idx[id]=i;});
+  var pmap={};d.personnes.forEach(function(p){pmap[p.id]=p;});
+  var key=function(a,b){return a<b?a+'|'+b:b+'|'+a;};
+  var unions=[],uMap={};
+  d.unions.forEach(function(u){
+    if(idx[u.p1]===undefined||idx[u.p2]===undefined||u.p1===u.p2||uMap[key(u.p1,u.p2)])return;
+    var o={id:u.id,a:u.p1,b:u.p2,statut:u.statut,virtuel:false};unions.push(o);uMap[key(u.p1,u.p2)]=o;
+  });
+  var fils=d.filiations.filter(function(f){return idx[f.parent]!==undefined&&idx[f.enfant]!==undefined&&f.parent!==f.enfant;});
+  var grp={};
+  fils.forEach(function(f){var k=f.enfant+'|'+f.type;var g=grp[k]||(grp[k]={enfant:f.enfant,type:f.type,parents:[]});if(g.parents.indexOf(f.parent)<0)g.parents.push(f.parent);});
+  var vn=0;
+  Object.keys(grp).forEach(function(k){
+    var g=grp[k];
+    if(g.parents.length===2){
+      var kk=key(g.parents[0],g.parents[1]);
+      if(!uMap[kk]){var o={id:'v'+(++vn),a:g.parents[0],b:g.parents[1],statut:null,virtuel:true};unions.push(o);uMap[kk]=o;}
+      g.union=uMap[kk];
+    }
+  });
+  /* générations */
+  var gen={};ids.forEach(function(id){gen[id]=0;});
+  var maxIt=ids.length*3+5,cap=ids.length;
+  for(var it=0;it<maxIt;it++){
+    var ch=false;
+    fils.forEach(function(f){if(gen[f.enfant]<gen[f.parent]+1&&gen[f.parent]<cap){gen[f.enfant]=gen[f.parent]+1;ch=true;}});
+    unions.forEach(function(u){var m=Math.max(gen[u.a],gen[u.b]);if(gen[u.a]!==m){gen[u.a]=m;ch=true;}if(gen[u.b]!==m){gen[u.b]=m;ch=true;}});
+    if(!ch)break;
+  }
+  /* blocs de conjoints */
+  var adj={};ids.forEach(function(id){adj[id]=[];});
+  unions.forEach(function(u){adj[u.a].push(u.b);adj[u.b].push(u.a);});
+  var parentsAll={},childrenAll={};ids.forEach(function(id){parentsAll[id]=[];childrenAll[id]=[];});
+  fils.forEach(function(f){if(parentsAll[f.enfant].indexOf(f.parent)<0)parentsAll[f.enfant].push(f.parent);if(childrenAll[f.parent].indexOf(f.enfant)<0)childrenAll[f.parent].push(f.enfant);});
+  var ordreBloc=function(comp){
+    if(comp.length===1)return comp;
+    var c=comp[0];
+    comp.forEach(function(x){if(adj[x].length>adj[c].length||(adj[x].length===adj[c].length&&idx[x]<idx[c]))c=x;});
+    var vis={};vis[c]=1;var L=[],R=[];
+    adj[c].slice().sort(function(x,y){return idx[x]-idx[y];}).forEach(function(n){
+      if(vis[n])return;
+      var u=uMap[key(c,n)],ex=u&&(u.statut==='separe'||u.statut==='divorce'||u.statut==='veuf');
+      var chain=[],cur=n;
+      while(cur&&!vis[cur]){vis[cur]=1;chain.push(cur);cur=adj[cur].filter(function(y){return !vis[y];})[0];}
+      Array.prototype.push.apply(ex?L:R,chain);
+    });
+    return L.reverse().concat([c],R);
+  };
+  var seen={},blocks=[],maxGen=0;
+  ids.forEach(function(id){
+    if(seen[id])return;
+    var comp=[],pile=[id];seen[id]=1;
+    while(pile.length){var x=pile.pop();comp.push(x);adj[x].forEach(function(y){if(!seen[y]){seen[y]=1;pile.push(y);}});}
+    var mem=ordreBloc(comp),mi=Math.min.apply(null,mem.map(function(m){return idx[m];}));
+    var fo='';mem.forEach(function(m){if(!fo&&pmap[m].foyer)fo=pmap[m].foyer;});
+    blocks.push({members:mem,width:(mem.length-1)*PITCH+W,gen:gen[mem[0]],x:0,idx:mi,foy:fo,des:0,wt:0,off:0});
+    if(gen[mem[0]]>maxGen)maxGen=gen[mem[0]];
+  });
+  var byGen=[];for(var g=0;g<=maxGen;g++)byGen.push([]);
+  blocks.forEach(function(b){byGen[b.gen].push(b);});
+  var cx={};
+  var setX=function(b,x){b.x=x;b.members.forEach(function(id,k){cx[id]=x+k*PITCH+W/2;});};
+  byGen.forEach(function(list){list.sort(function(p,q){return p.idx-q.idx;});var x=0;list.forEach(function(b){setX(b,x);x+=b.width+GAP;});});
+  var target=function(b,dir){
+    var s=0,n=0;
+    b.members.forEach(function(id,k){
+      var refs=(dir>0?parentsAll[id]:childrenAll[id]);
+      if(refs.length){var m=0;refs.forEach(function(r){m+=cx[r];});m/=refs.length;s+=m-(k*PITCH+W/2);n++;}
+    });
+    return n?{left:s/n,n:n}:null;
+  };
+  var placer=function(list,dir){
+    if(dir>0)list.forEach(function(b){
+      if(b.members.length<2)return;
+      var cout=function(mem){var c=0;mem.forEach(function(id,k){var r=parentsAll[id];if(!r.length)return;var m=0;r.forEach(function(x){m+=cx[x];});m/=r.length;c+=Math.abs(m-(b.x+k*PITCH+W/2));});return c;};
+      var inv=b.members.slice().reverse();
+      if(cout(inv)+1<cout(b.members)){b.members=inv;setX(b,b.x);}
+    });
+    list.forEach(function(b){var t=target(b,dir);b.des=t?t.left:b.x;b.wt=t?t.n:0.05;});
+    list.sort(function(p,q){return (Math.round(p.des+p.width/2)-Math.round(q.des+q.width/2))||(p.foy<q.foy?-1:(p.foy>q.foy?1:0))||(p.idx-q.idx);});
+    var off=0;list.forEach(function(b){b.off=off;off+=b.width+GAP;});
+    var G=[];
+    list.forEach(function(b){
+      G.push({w:b.wt,s:b.wt*(b.des-b.off),n:1});
+      while(G.length>1){var a=G[G.length-2],c=G[G.length-1];if(a.s/a.w>c.s/c.w){a.w+=c.w;a.s+=c.s;a.n+=c.n;G.pop();}else break;}
+    });
+    var i=0;G.forEach(function(gr){var m=gr.s/gr.w;for(var k=0;k<gr.n;k++){setX(list[i],m+list[i].off);i++;}});
+  };
+  var passe=function(dir){
+    if(dir>0)for(var g1=1;g1<=maxGen;g1++)placer(byGen[g1],1);
+    else for(var g2=maxGen-1;g2>=0;g2--)placer(byGen[g2],-1);
+  };
+  passe(1);passe(-1);passe(1);passe(-1);passe(1);
+  var minL=Infinity,maxR=-Infinity;
+  blocks.forEach(function(b){if(b.x<minL)minL=b.x;if(b.x+b.width>maxR)maxR=b.x+b.width;});
+  if(!blocks.length){minL=0;maxR=300;}
+  var dec=MARGIN-minL;
+  var noeuds={};
+  ids.forEach(function(id){noeuds[id]={x:cx[id]+dec,y:Y0+gen[id]*ROWH,gen:gen[id]};});
+  var uns=unions.map(function(u){return {id:u.id,a:u.a,b:u.b,statut:u.statut,virtuel:u.virtuel,x1:noeuds[u.a].x,x2:noeuds[u.b].x,y:noeuds[u.a].y,mx:(noeuds[u.a].x+noeuds[u.b].x)/2};});
+  /* Familles : un ancrage (union ou parent seul) + un type de filiation -> une barre horizontale propre */
+  var fams={},liens=[];
+  Object.keys(grp).forEach(function(k){
+    var g=grp[k];
+    var ancres=g.union?[{k:'u'+g.union.id,x:(noeuds[g.union.a].x+noeuds[g.union.b].x)/2,y:noeuds[g.union.a].y}]:g.parents.map(function(p){return {k:'p'+p,x:noeuds[p].x,y:noeuds[p].y+76};});
+    ancres.forEach(function(an){
+      var fk=an.k+'|'+g.type,f=fams[fk]||(fams[fk]={type:g.type,ax:an.x,ay:an.y,enfants:[]});
+      f.enfants.push(g.enfant);
+    });
+  });
+  var parRang={};
+  Object.keys(fams).forEach(function(fk){
+    var f=fams[fk],xs=f.enfants.map(function(e){return noeuds[e].x;}).concat([f.ax]);
+    f.x0=Math.min.apply(null,xs);f.x1=Math.max.apply(null,xs);
+    f.top=Math.min.apply(null,f.enfants.map(function(e){return noeuds[e].y;}))-SYM-4;
+    (parRang[f.top]||(parRang[f.top]=[])).push(f);
+  });
+  Object.keys(parRang).forEach(function(r){
+    var L=parRang[r].sort(function(a,b){return (a.x0-b.x0)||(a.x1-b.x1);}),fin=[];
+    L.forEach(function(f){
+      var lv=0;while(fin[lv]!==undefined&&fin[lv]>f.x0-14)lv++;
+      fin[lv]=f.x1;f.niv=lv;
+    });
+    var n=fin.length,pas=n>1?Math.min(16,64/(n-1)):0;
+    L.forEach(function(f){
+      var bus=f.top-82+f.niv*pas;
+      if(bus<=f.ay+8)bus=(f.ay+f.top)/2;
+      f.enfants.forEach(function(e){var c=noeuds[e],top=c.y-SYM-4;
+        liens.push({type:f.type,enfant:e,pts:[[f.ax,f.ay],[f.ax,bus],[c.x,bus],[c.x,top]]});});
+    });
+  });
+  var foyers=[];
+  (d.foyers||[]).forEach(function(f){
+    var mem=d.personnes.filter(function(p){return p.foyer===f.id&&noeuds[p.id];}).map(function(p){return p.id;});
+    if(!mem.length)return;
+    var x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+    mem.forEach(function(id){var n=noeuds[id];x0=Math.min(x0,n.x);x1=Math.max(x1,n.x);y0=Math.min(y0,n.y);y1=Math.max(y1,n.y);});
+    var r={x:x0-W/2-6,y:y0-SYM-26,w:x1-x0+W+12,h:y1-y0+SYM+26+86};
+    var contour=true;
+    ids.forEach(function(id){if(mem.indexOf(id)>=0)return;var n=noeuds[id];if(n.x>r.x&&n.x<r.x+r.w&&n.y>r.y&&n.y<r.y+r.h)contour=false;});
+    foyers.push({id:f.id,nom:f.nom,couleur:f.couleur,membres:mem,contour:contour,rect:r});
+  });
+  var haut=MARGIN*2+maxGen*ROWH+30+90;
+  return {noeuds:noeuds,unions:uns,liens:liens,foyers:foyers,largeur:maxR-minL+MARGIN*2,hauteur:haut,W:W,SYM:SYM,ROWH:ROWH};
+}
+
+var COULEURS_REL={proche:'#2e9e5b',fusionnelle:'#7b4fb8',distante:'#7f93a8',conflit:'#e67e22',rupture:'#4b5563',violence:'#d32f2f',emprise:'#8b1a1a'};
+function relationsDe(d,id){return d.relations.filter(function(r){return r.de===id||r.vers===id;});}
+
+return {COULEURS_REL:COULEURS_REL,relationsDe:relationsDe,STATUTS:STATUTS,TYPES_FIL:TYPES_FIL,TYPES_REL:TYPES_REL,TYPES_LIEN:TYPES_LIEN,aujourdhui:aujourdhui,nouveauDossier:nouveauDossier,normaliser:normaliser,valider:valider,coherence:coherence,
+  creerPersonne:creerPersonne,supprimerPersonne:supprimerPersonne,remplacerPersonne:remplacerPersonne,ajouterUnion:ajouterUnion,ajouterFiliation:ajouterFiliation,supprimerUnion:supprimerUnion,supprimerFiliation:supprimerFiliation,
+  ajouterLien:ajouterLien,questions:questions,decrireLien:decrireLien,phrase:phrase,article:article,calculerDisposition:calculerDisposition,calculerAge:calculerAge,libelleAge:libelleAge,nomAffiche:nomAffiche,
+  snapshot:snapshot,restaurer:restaurer,parentsDe:parentsDe,enfantsDe:enfantsDe,conjointsDe:conjointsDe,fratrie:fratrie,pers:pers,nettoyerInconnus:nettoyerInconnus};
+})();
+/* @core-end */
+</script>
+
+<script>
+/* ===== Interface : rendu SVG, formulaires, fichiers, export ===== */
+(function(){
+'use strict';
+var NS='http://www.w3.org/2000/svg';
+var ACC='#d9772b',ENC='#2f4558',TRAIT='#334155';
+var EXEMPLE={"version":1,"dossier":{"titre":"Situation familiale de Tom Durand","creeLe":"2026-11-21","modifieLe":"2026-11-21","auteur":"Infirmière scolaire","logo":null},"personnes":[{"id":"p1","prenom":"Georges","nom":"Martin","nomNaissance":"","sexe":"M","dateNaissance":"1946-05-12","age":null,"decede":true,"dateDeces":"2019-03-08","ageDeces":null,"profession":"Retraité (ancien menuisier)","foyer":null,"notes":"Grand-père maternel, décédé.","concerne":false,"inconnu":false},{"id":"p2","prenom":"Odette","nom":"Martin","nomNaissance":"Lefèvre","sexe":"F","dateNaissance":"1948-09-30","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Retraitée","foyer":null,"notes":"Grand-mère maternelle, voit Tom le mercredi.","concerne":false,"inconnu":false},{"id":"p3","prenom":"Sandrine","nom":"Martin","nomNaissance":"","sexe":"F","dateNaissance":"1980-02-14","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Aide-soignante","foyer":"h1","notes":"Mère de Tom et Léa. Garde principale.","concerne":false,"inconnu":false},{"id":"p4","prenom":"Marc","nom":"Durand","nomNaissance":"","sexe":"M","dateNaissance":"1978-11-03","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Chauffeur-livreur","foyer":"h2","notes":"Père de Tom, Léa et Noé. Droit de visite un week-end sur deux.","concerne":false,"inconnu":false},{"id":"p5","prenom":"Karim","nom":"Benali","nomNaissance":"","sexe":"M","dateNaissance":null,"age":51,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Électricien","foyer":"h1","notes":"Compagnon de Sandrine, père d'Inès.","concerne":false,"inconnu":false},{"id":"p6","prenom":"Julie","nom":"Durand","nomNaissance":"Roux","sexe":"F","dateNaissance":"1982-07-21","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Employée de banque","foyer":"h2","notes":"Épouse de Marc, belle-mère de Tom.","concerne":false,"inconnu":false},{"id":"p7","prenom":"Paul","nom":"Durand","nomNaissance":"","sexe":"M","dateNaissance":"1950-01-17","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Retraité","foyer":null,"notes":"Grand-père paternel.","concerne":false,"inconnu":false},{"id":"p8","prenom":"Tom","nom":"Durand","nomNaissance":"","sexe":"M","dateNaissance":"2012-03-04","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Collégien (4e)","foyer":"h1","notes":"Élève suivi pour absentéisme et tensions familiales.","concerne":true,"inconnu":false},{"id":"p9","prenom":"Léa","nom":"Durand","nomNaissance":"","sexe":"F","dateNaissance":"2015-06-18","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"École primaire (CM1)","foyer":"h1","notes":"","concerne":false,"inconnu":false},{"id":"p10","prenom":"Inès","nom":"Benali","nomNaissance":"","sexe":"F","dateNaissance":"2020-10-02","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Maternelle","foyer":"h1","notes":"","concerne":false,"inconnu":false},{"id":"p11","prenom":"Noé","nom":"Durand","nomNaissance":"","sexe":"M","dateNaissance":"2022-04-09","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Crèche","foyer":"h2","notes":"","concerne":false,"inconnu":false},{"id":"p12","prenom":"Claire","nom":"Lambert","nomNaissance":"Durand","sexe":"F","dateNaissance":"1981-08-25","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Infirmière","foyer":null,"notes":"Tante paternelle de Tom.","concerne":false,"inconnu":false},{"id":"p13","prenom":"Hugo","nom":"Lambert","nomNaissance":"","sexe":"M","dateNaissance":"2010-12-12","age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"Collégien (3e)","foyer":null,"notes":"Cousin et ami proche de Tom.","concerne":false,"inconnu":false},{"id":"p14","prenom":"Parent inconnu","nom":"","nomNaissance":"","sexe":"F","dateNaissance":null,"age":null,"decede":false,"dateDeces":null,"ageDeces":null,"profession":"","foyer":null,"notes":"Mère de Marc et Claire, aucune information.","concerne":false,"inconnu":true}],"unions":[{"id":"u1","p1":"p1","p2":"p2","statut":"veuf"},{"id":"u2","p1":"p3","p2":"p4","statut":"divorce"},{"id":"u3","p1":"p3","p2":"p5","statut":"pacse"},{"id":"u4","p1":"p4","p2":"p6","statut":"marie"},{"id":"u5","p1":"p7","p2":"p14","statut":"separe"}],"filiations":[{"id":"f1","parent":"p1","enfant":"p3","type":"biologique"},{"id":"f2","parent":"p2","enfant":"p3","type":"biologique"},{"id":"f3","parent":"p7","enfant":"p4","type":"biologique"},{"id":"f4","parent":"p14","enfant":"p4","type":"biologique"},{"id":"f5","parent":"p7","enfant":"p12","type":"biologique"},{"id":"f6","parent":"p14","enfant":"p12","type":"biologique"},{"id":"f7","parent":"p3","enfant":"p8","type":"biologique"},{"id":"f8","parent":"p4","enfant":"p8","type":"biologique"},{"id":"f9","parent":"p3","enfant":"p9","type":"biologique"},{"id":"f10","parent":"p4","enfant":"p9","type":"biologique"},{"id":"f11","parent":"p3","enfant":"p10","type":"biologique"},{"id":"f12","parent":"p5","enfant":"p10","type":"biologique"},{"id":"f13","parent":"p4","enfant":"p11","type":"biologique"},{"id":"f14","parent":"p6","enfant":"p11","type":"biologique"},{"id":"f15","parent":"p12","enfant":"p13","type":"biologique"}],"foyers":[{"id":"h1","nom":"Domicile de la mère","couleur":"#4a90a4"},{"id":"h2","nom":"Domicile du père","couleur":"#c27c3a"}],"relations":[{"id":"r1","de":"p4","vers":"p8","type":"conflit"},{"id":"r2","de":"p3","vers":"p8","type":"fusionnelle"},{"id":"r3","de":"p8","vers":"p7","type":"distante"}],"liensLibres":[{"id":"l1","de":"p13","vers":"p8","libelle":"Meilleur ami"}]};
+var exemple=false;
+var D=Core.nouveauDossier(),sel=null,dirty=false,aff={foyers:true,vueRel:false},vue={x:0,y:0,k:1},LAY=null,modalEl=null,toastT=null;
+var $=function(id){return document.getElementById(id);};
+
+/* --- utilitaires DOM (aucun innerHTML avec des données) --- */
+function h(tag,attrs){
+  var e=document.createElement(tag);
+  if(attrs)Object.keys(attrs).forEach(function(k){var v=attrs[k];
+    if(k==='class')e.className=v;else if(k==='text')e.textContent=v;
+    else if(k.indexOf('on')===0)e.addEventListener(k.slice(2),v);
+    else if(v===true)e.setAttribute(k,'');else if(v!==false&&v!==null&&v!==undefined)e.setAttribute(k,v);});
+  for(var i=2;i<arguments.length;i++)add(e,arguments[i]);
+  return e;
+}
+function add(e,c){if(c===null||c===undefined||c===false)return;if(Array.isArray(c)){c.forEach(function(x){add(e,x);});return;}e.appendChild(typeof c==='object'?c:document.createTextNode(String(c)));}
+function s(tag,attrs){
+  var e=document.createElementNS(NS,tag);
+  if(attrs)Object.keys(attrs).forEach(function(k){if(attrs[k]!==null&&attrs[k]!==undefined)e.setAttribute(k,attrs[k]);});
+  for(var i=2;i<arguments.length;i++)add(e,arguments[i]);
+  return e;
+}
+function norm(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+function tronque(t,n){t=String(t||'');return t.length>n?t.slice(0,n-1)+'…':t;}
+function maj1(t){return t?t.charAt(0).toUpperCase()+t.slice(1):t;}
+function pers(id){return Core.pers(D,id);}
+function nom(id,anon){return Core.nomAffiche(pers(id),anon);}
+function toast(msg){var t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(function(){t.style.display='none';},5000);}
+
+/* --- modales --- */
+function fermerModal(){if(modalEl){modalEl.remove();modalEl=null;}}
+function modal(titre,corps,boutons){
+  fermerModal();
+  var err=h('div',{class:'err',role:'alert'});
+  var foot=h('footer');
+  (boutons||[]).forEach(function(b){foot.appendChild(h('button',{class:'btn '+(b.cls||''),type:'button',onclick:b.action,text:b.label}));});
+  var box=h('div',{class:'modal',role:'dialog','aria-modal':'true'},h('header',{text:titre}),h('div',{class:'corps'},corps,err),foot);
+  modalEl=h('div',{class:'ov'},box);
+  document.body.appendChild(modalEl);
+  var f=box.querySelector('input:not([type=checkbox]):not([type=radio]),select,textarea');if(f)f.focus();
+  return function(msg){err.textContent=msg||'';};
+}
+function confirmer(msg,libelle,cb){modal('Confirmation',h('p',{text:msg}),[{label:'Annuler',action:fermerModal},{label:libelle,cls:'dan',action:function(){fermerModal();cb();}}]);}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modalEl)fermerModal();});
+function champ(label,el,aide){return h('label',{class:'champ'},h('span',{text:label}),el,aide?h('span',{class:'aide',text:aide}):null);}
+function inp(type,val,attrs){var e=h('input',Object.assign({type:type},attrs||{}));if(val!==null&&val!==undefined)e.value=val;return e;}
+function sele(opts,val){var e=h('select');opts.forEach(function(o){var op=h('option',{value:o[0],text:o[1]});e.appendChild(op);});if(val!==undefined&&val!==null)e.value=val;return e;}
+function chk(label,on){var i=h('input',{type:'checkbox'});i.checked=!!on;return {input:i,el:h('label',{class:'chk'},i,h('span',{text:label}))};}
+function optsPers(excl){return D.personnes.filter(function(p){return p.id!==excl;}).slice().sort(function(a,b){return norm(Core.nomAffiche(a)).localeCompare(norm(Core.nomAffiche(b)));}).map(function(p){var a=Core.libelleAge(p);return [p.id,Core.nomAffiche(p)+(a?' ('+a+')':'')];});}
+
+/* --- état --- */
+function modifier(){dirty=true;D.dossier.modifieLe=Core.aujourdhui();maj();}
+function alerter(){var al=Core.coherence(D);if(al.length)toast('Attention : '+al[0]+(al.length>1?' (+'+(al.length-1)+' autre(s))':''));}
+
+/* ===== Rendu SVG ===== */
+function symbole(parent,sexe,cx,cy,o){
+  var r=22;
+  var forme=function(g){var rr=r+g;
+    if(sexe==='M')return s('rect',{x:cx-rr,y:cy-rr,width:2*rr,height:2*rr});
+    if(sexe==='F')return s('circle',{cx:cx,cy:cy,r:rr});
+    return s('polygon',{points:cx+','+(cy-rr-3)+' '+(cx+rr+3)+','+cy+' '+cx+','+(cy+rr+3)+' '+(cx-rr-3)+','+cy});};
+  if(o.concerne){var e=forme(5);e.setAttribute('fill','none');e.setAttribute('stroke',ACC);e.setAttribute('stroke-width','2');parent.appendChild(e);}
+  var m=forme(0);
+  m.setAttribute('fill',o.inconnu?'#eceff3':(o.concerne?'#fde9d2':'#ffffff'));
+  m.setAttribute('stroke',o.inconnu?'#8a94a0':(o.concerne?ACC:ENC));
+  m.setAttribute('stroke-width','2');
+  if(o.inconnu)m.setAttribute('stroke-dasharray','4 3');
+  parent.appendChild(m);
+  if(o.decede){var c=r*0.82;
+    parent.appendChild(s('line',{x1:cx-c,y1:cy-c,x2:cx+c,y2:cy+c,stroke:ENC,'stroke-width':2}));
+    parent.appendChild(s('line',{x1:cx-c,y1:cy+c,x2:cx+c,y2:cy-c,stroke:ENC,'stroke-width':2}));}
+}
+function echantillon(P,Q,C,n){var pts=[];for(var i=0;i<=n;i++){var t=i/n,u=1-t;pts.push([u*u*P[0]+2*u*t*C[0]+t*t*Q[0],u*u*P[1]+2*u*t*C[1]+t*t*Q[1]]);}return pts;}
+function decale(pts,off,alt){
+  return pts.map(function(p,i){var a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];var dx=b[0]-a[0],dy=b[1]-a[1],l=Math.sqrt(dx*dx+dy*dy)||1;var o=alt?((i===0||i===pts.length-1)?0:(i%2?off:-off)):off;return [p[0]-dy/l*o,p[1]+dx/l*o];});
+}
+function chemin(pts){return 'M'+pts.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(1);}).join(' L');}
+var STYLE_REL={proche:[null,1.8],fusionnelle:[null,3.2],distante:['3 4',1.8],conflit:[null,1.8],rupture:['10 5',2],violence:[null,2.4],emprise:[null,2.4]};
+function coulRel(t){return Core.COULEURS_REL[t]||'#64748b';}
+function flecheRel(g,x,y,dx,dy,col){
+  var l=Math.sqrt(dx*dx+dy*dy)||1;dx/=l;dy/=l;
+  g.appendChild(s('polygon',{points:x+','+y+' '+(x-dx*11-dy*5.5)+','+(y-dy*11+dx*5.5)+' '+(x-dx*11+dy*5.5)+','+(y-dy*11-dx*5.5),fill:col}));
+}
+function arcRelation(g,r,lay,n){
+  var A=lay.noeuds[r.de],B=lay.noeuds[r.vers];if(!A||!B)return;
+  var col=coulRel(r.type),st=STYLE_REL[r.type]||[null,1.8],ry=lay.SYM+4,off=(n%3-1)*5,sg=(n%2?1:-1);
+  var x1=A.x+off,y1=A.y-ry,x2=B.x+off,y2=B.y-ry,dx=x2-x1;
+  var top=Math.min(y1,y2)-(34+Math.min(90,Math.abs(dx)*0.12)+(n%4)*12);
+  var c1=Math.abs(dx)<10?x1+sg*40:x1+dx*0.12,c2=Math.abs(dx)<10?x2+sg*40:x2-dx*0.12;
+  g.appendChild(s('path',{d:'M'+x1.toFixed(1)+' '+y1.toFixed(1)+' C'+c1.toFixed(1)+' '+top.toFixed(1)+' '+c2.toFixed(1)+' '+top.toFixed(1)+' '+x2.toFixed(1)+' '+y2.toFixed(1),fill:'none',stroke:col,'stroke-width':st[1],'stroke-dasharray':st[0],'stroke-linecap':'round','stroke-opacity':0.9,'pointer-events':'none'}));
+  if(r.type==='emprise')flecheRel(g,x2,y2,x2-c2,y2-top,col);
+}
+function pastilles(gn,p,n){
+  var ts=[];Core.relationsDe(D,p.id).forEach(function(r){if(ts.indexOf(r.type)<0)ts.push(r.type);});
+  ts.sort(function(a,b){return idxRel(a)-idxRel(b);});
+  ts.forEach(function(t,i){gn.appendChild(s('circle',{cx:n.x-30-i*10,cy:n.y-28,r:4.2,fill:coulRel(t),stroke:'#fff','stroke-width':1}));});
+  if(D.liensLibres.some(function(l){return l.de===p.id||l.vers===p.id;}))gn.appendChild(s('circle',{cx:n.x-30-ts.length*10,cy:n.y-28,r:4.2,fill:'#fff',stroke:'#64748b','stroke-width':1.4,'stroke-dasharray':'1.5 1.5'}));
+}
+function idxRel(t){for(var i=0;i<Core.TYPES_REL.length;i++)if(Core.TYPES_REL[i][0]===t)return i;return 99;}
+function libRel(t){var x=Core.TYPES_REL[idxRel(t)];return x?x[1]:t;}
+var PREF_REL={proche:'relation proche avec ',fusionnelle:'relation fusionnelle avec ',distante:'relation distante avec ',conflit:'conflit avec ',rupture:'rupture avec ',violence:'violence avec '};
+function texteRel(r,id){
+  var o=nom(r.de===id?r.vers:r.de);
+  if(r.type==='emprise')return r.de===id?'emprise / maltraitance exercée sur '+o:'emprise / maltraitance subie de la part de '+o;
+  return (PREF_REL[r.type]||r.type+' avec ')+o;
+}
+function echRel(sv,type){ /* échantillon de trait pour la légende */
+  var col=coulRel(type),st=STYLE_REL[type]||[null,1.8];
+  sv.appendChild(s('line',{x1:2,y1:12,x2:type==='emprise'?32:42,y2:12,stroke:col,'stroke-width':st[1],'stroke-dasharray':st[0],'stroke-linecap':'round'}));
+  if(type==='emprise')flecheRel(sv,42,12,1,0,col);
+}
+function styleFil(t){return t==='adoptif'?'7 5':(t==='accueil'?'2 4':(t==='beau-parent'?'8 3 2 3':null));}
+/* Dessine l'arbre complet dans le groupe g. o : {anon, foyers, interactif, arcs (relations à tracer), attenue, focus (ids non atténués), pastilles} */
+function dessiner(g,lay,o){
+  var trait=o.attenue?'#d3d9e0':TRAIT;
+  if(o.foyers)lay.foyers.forEach(function(f){
+    if(!f.contour)return;var r=f.rect;
+    g.appendChild(s('rect',{x:r.x,y:r.y,width:r.w,height:r.h,rx:14,fill:f.couleur,'fill-opacity':0.07,stroke:f.couleur,'stroke-width':2,'stroke-dasharray':'7 5',opacity:o.attenue?0.4:null}));
+    g.appendChild(s('text',{x:r.x+10,y:r.y+16,class:'t-fo',fill:f.couleur},f.nom));
+  });
+  lay.liens.forEach(function(l){g.appendChild(s('path',{d:chemin(l.pts.map(function(p){return p;})),fill:'none',stroke:trait,'stroke-width':1.8,'stroke-dasharray':styleFil(l.type)}));});
+  lay.unions.forEach(function(u){
+    var xa=Math.min(u.x1,u.x2)+lay.SYM,xb=Math.max(u.x1,u.x2)-lay.SYM,y=u.y,mx=u.mx;
+    if(u.virtuel){g.appendChild(s('line',{x1:xa,y1:y,x2:xb,y2:y,stroke:o.attenue?'#e1e5ea':'#94a3b8','stroke-width':1}));return;}
+    g.appendChild(s('line',{x1:xa,y1:y,x2:xb,y2:y,stroke:trait,'stroke-width':2,'stroke-dasharray':u.statut==='couple'?'7 5':null}));
+    var bar=function(dx){g.appendChild(s('line',{x1:mx+dx-4,y1:y+9,x2:mx+dx+4,y2:y-9,stroke:trait,'stroke-width':2}));};
+    if(u.statut==='separe')bar(0);
+    if(u.statut==='divorce'){bar(-4);bar(4);}
+  });
+  D.personnes.forEach(function(p){
+    var n=lay.noeuds[p.id];if(!n)return;
+    var gn=s('g',{class:'noeud'+(o.interactif&&sel===p.id?' sel':''),'data-id':p.id});
+    gn.appendChild(s('rect',{class:'hl',x:n.x-lay.W/2,y:n.y-34,width:lay.W,height:112,rx:10}));
+    if(o.focus&&!o.focus[p.id])gn.setAttribute('opacity','0.35');
+    symbole(gn,p.sexe,n.x,n.y,{inconnu:p.inconnu,decede:p.decede,concerne:p.concerne});
+    if(o.pastilles)pastilles(gn,p,n);
+    gn.appendChild(s('text',{x:n.x,y:n.y+40,'text-anchor':'middle',class:'t-nom'},tronque(Core.nomAffiche(p,o.anon),20)));
+    var age=Core.libelleAge(p);if(age)gn.appendChild(s('text',{x:n.x,y:n.y+54,'text-anchor':'middle',class:'t-age'},age));
+    if(p.profession&&!p.inconnu)gn.appendChild(s('text',{x:n.x,y:n.y+68,'text-anchor':'middle',class:'t-pro'},tronque(p.profession,24)));
+    if(o.foyers&&p.foyer){var f=lay.foyers.filter(function(x){return x.id===p.foyer;})[0];
+      if(f&&!f.contour)gn.appendChild(s('circle',{cx:n.x+22,cy:n.y-22,r:7,fill:f.couleur,stroke:'#fff','stroke-width':1.5}));}
+    if(o.interactif)gn.addEventListener('click',function(){if(vue.moved)return;sel=p.id;maj();});
+    if(o.interactif)gn.addEventListener('dblclick',function(){formPersonne(p);});
+    g.appendChild(gn);
+  });
+  if(o.arcs)o.arcs.forEach(function(r,i){arcRelation(g,r,lay,i);});
+  (o.libres||[]).forEach(function(l,i){
+    var A=lay.noeuds[l.de],B=lay.noeuds[l.vers];if(!A||!B)return;
+    var ry=lay.SYM+4,x1=A.x,y1=A.y-ry,x2=B.x,y2=B.y-ry,dx=x2-x1;
+    var top=Math.min(y1,y2)-(40+Math.min(90,Math.abs(dx)*0.12)+(i%3)*12);
+    var c1=Math.abs(dx)<10?x1+40:x1+dx*0.12,c2=Math.abs(dx)<10?x2+40:x2-dx*0.12;
+    g.appendChild(s('path',{d:'M'+x1.toFixed(1)+' '+y1.toFixed(1)+' C'+c1.toFixed(1)+' '+top.toFixed(1)+' '+c2.toFixed(1)+' '+top.toFixed(1)+' '+x2.toFixed(1)+' '+y2.toFixed(1),fill:'none',stroke:'#64748b','stroke-width':1.4,'stroke-dasharray':'1 5','stroke-linecap':'round','pointer-events':'none'}));
+    g.appendChild(s('text',{x:(x1+x2)/2,y:0.25*(y1+y2)/2+0.75*top-3,'text-anchor':'middle',class:'t-lib'},tronque(l.libelle,24)));
+  });
+}
+
+function appliquerVue(){$('vp').setAttribute('transform','translate('+vue.x+' '+vue.y+') scale('+vue.k+')');}
+function recentrer(){
+  var sv=$('arbre'),cw=sv.clientWidth,ch=sv.clientHeight;if(!LAY||!cw||!ch)return;
+  var k=Math.min((cw-20)/LAY.largeur,(ch-60)/LAY.hauteur,1);if(!(k>0))k=1;
+  vue.k=k;vue.x=(cw-LAY.largeur*k)/2;vue.y=Math.max(10,(ch-LAY.hauteur*k)/2-10);appliquerVue();
+}
+function zoom(f,px,py){
+  var sv=$('arbre');if(px===undefined){px=sv.clientWidth/2;py=sv.clientHeight/2;}
+  var k=Math.max(0.1,Math.min(3,vue.k*f)),r=k/vue.k;
+  vue.x=px-(px-vue.x)*r;vue.y=py-(py-vue.y)*r;vue.k=k;appliquerVue();
+}
+
+/* ===== Mise à jour de l'interface ===== */
+var premier=true;
+function optsDessin(){
+  var o={anon:false,foyers:aff.foyers,interactif:true};
+  var rs=(sel&&pers(sel))?Core.relationsDe(D,sel):[];
+  var ls=(sel&&pers(sel))?D.liensLibres.filter(function(l){return l.de===sel||l.vers===sel;}):[];
+  if(aff.vueRel){o.arcs=D.relations;o.libres=D.liensLibres;o.attenue=true;}
+  else if(rs.length||ls.length){o.arcs=rs;o.libres=ls;o.attenue=true;o.focus={};o.focus[sel]=1;rs.concat(ls).forEach(function(r){o.focus[r.de]=1;o.focus[r.vers]=1;});}
+  else o.pastilles=true;
+  return o;
+}
+function maj(){
+  LAY=Core.calculerDisposition(D);
+  var vp=$('vp');while(vp.firstChild)vp.removeChild(vp.firstChild);
+  dessiner(vp,LAY,optsDessin());
+  $('vide').style.display=D.personnes.length?'none':'flex';
+  $('bandeau').style.display=exemple?'block':'none';
+  if(premier||vue.refit){recentrer();premier=false;vue.refit=false;}else appliquerVue();
+  $('titre').textContent='Arbre familial — '+D.dossier.titre;
+  $('dirty').className=dirty?'on':'';
+  document.title=(dirty?'● ':'')+'Arbre familial — '+D.dossier.titre;
+  majListes();majFiche();
+  var al=Core.coherence(D),ba=$('bAlertes');ba.style.display=al.length?'':'none';ba.textContent='⚠ '+al.length+' alerte'+(al.length>1?'s':'');
+}
+function majListes(){
+  var q=norm($('rech').value),lp=$('lp');lp.textContent='';
+  var l=D.personnes.filter(function(p){return !q||norm(Core.nomAffiche(p)+' '+(p.nomNaissance||'')+' '+(p.profession||'')).indexOf(q)>=0;})
+    .sort(function(a,b){return norm(Core.nomAffiche(a)).localeCompare(norm(Core.nomAffiche(b)));});
+  if(!l.length)lp.appendChild(h('li',{class:'vide',text:D.personnes.length?'Aucun résultat':'Aucune personne'}));
+  l.forEach(function(p){lp.appendChild(h('li',{class:p.id===sel?'sel':'',onclick:function(){sel=p.id;maj();}},h('span',{text:p.sexe==='M'?'■':(p.sexe==='F'?'●':'◆'),style:'color:'+(p.inconnu?'#999':ENC)}),h('span',{text:Core.nomAffiche(p)+(p.decede?' †':'')+(p.concerne?' ★':'')})));});
+  var lf=$('lf');lf.textContent='';
+  if(!D.foyers.length)lf.appendChild(h('li',{class:'vide',text:'Aucun foyer'}));
+  D.foyers.forEach(function(f){lf.appendChild(h('li',{onclick:function(){formFoyer(f);}},h('span',{text:'■',style:'color:'+f.couleur}),h('span',{text:f.nom})));});
+  var lr=$('lr');lr.textContent='';
+  if(!D.relations.length&&!D.liensLibres.length)lr.appendChild(h('li',{class:'vide',text:'Aucune relation'}));
+  D.relations.forEach(function(r){lr.appendChild(h('li',{onclick:function(){formRelation(r);}},h('span',{class:'pd',style:'background:'+coulRel(r.type)}),h('span',{text:nom(r.de)+(r.type==='emprise'?' → ':' ↔ ')+nom(r.vers)+' : '+libRel(r.type).toLowerCase()})));});
+  D.liensLibres.forEach(function(l){lr.appendChild(h('li',{onclick:function(){formLibre(l);}},h('span',{text:'Lien libre : '+nom(l.de)+' → '+nom(l.vers)+' (« '+l.libelle+' »)'})));});
+}
+function majFiche(){
+  var f=$('fiche');f.textContent='';
+  var p=sel?pers(sel):null;
+  if(!p){sel=null;f.appendChild(h('span',{style:'color:#64748b',text:'Cliquez sur une personne pour afficher sa fiche.'}));return;}
+  var ag=Core.libelleAge(p),fo=D.foyers.filter(function(x){return x.id===p.foyer;})[0];
+  f.appendChild(h('div',{class:'fh'},h('b',{text:Core.nomAffiche(p)+(p.concerne?' ★':'')}),
+    ag?h('span',{text:ag}):null,p.profession?h('span',{text:p.profession}):null,fo?h('span',{text:'Foyer : '+fo.nom}):null,
+    h('span',{style:'flex:1'}),
+    h('button',{class:'btn pet',onclick:function(){formPersonne(p);},text:'Modifier'}),
+    h('button',{class:'btn pet',onclick:function(){formLien(p.id);},text:'+ Lien'}),
+    p.inconnu?h('button',{class:'btn pet acc',onclick:function(){formRemplacer(p);},text:'Remplacer par…'}):null,
+    h('button',{class:'btn pet',onclick:function(){formLiens(p.id);},text:'Gérer les liens'})));
+  if(p.inconnu)f.appendChild(h('div',{class:'aide',text:'Personne inconnue : « Remplacer par… » permet de la remplacer par une personne déjà saisie, ou « Modifier » pour la compléter.'}));
+  var ph=[];D.personnes.forEach(function(o){if(o.id!==p.id&&(!o.inconnu||p.inconnu)){var t=Core.phrase(D,p.id,o.id);if(t)ph.push(t);}});
+  if(ph.length)f.appendChild(h('div',{class:'liens',text:ph.join(' · ')}));
+  Core.relationsDe(D,p.id).forEach(function(r){
+    f.appendChild(h('div',{class:'lrel'},h('span',{class:'pd',style:'background:'+coulRel(r.type)}),h('span',{class:'tx',text:maj1(texteRel(r,p.id))}),
+      h('button',{class:'btn pet',text:'Modifier',onclick:function(){formRelation(r);}}),
+      h('button',{class:'btn pet dan',text:'Supprimer',onclick:function(){confirmer('Supprimer cette relation ('+texteRel(r,p.id)+') ?','Supprimer',function(){D.relations=D.relations.filter(function(x){return x!==r;});modifier();});}})));
+  });
+  if(p.notes)f.appendChild(h('div',{class:'notes',text:p.notes}));
+}
+
+/* ===== Formulaires ===== */
+function formRemplacer(p){
+  var cands=D.personnes.filter(function(o){if(o.id===p.id)return false;var c=JSON.parse(JSON.stringify(D));try{Core.remplacerPersonne(c,p.id,o.id);return true;}catch(e){return false;}}).sort(function(a,b){return (a.inconnu-b.inconnu)||Core.nomAffiche(a).localeCompare(Core.nomAffiche(b));});
+  if(!cands.length){toast('Aucune personne saisie ne peut remplacer celle-ci sans créer d\'incohérence.');return;}
+  var se=sele(cands.map(function(o){return [o.id,Core.nomAffiche(o)+(o.inconnu?' (inconnu)':'')];}));
+  modal('Remplacer « '+Core.nomAffiche(p)+' »',h('div',null,
+    champ('Par quelle personne déjà saisie ?',se,'Tous les liens de la personne inconnue (enfants, conjoint, relations) seront reportés sur la personne choisie, puis la personne inconnue sera supprimée.')),
+    [{label:'Annuler',action:fermerModal},{label:'Remplacer',cls:'acc',action:function(){
+      try{Core.remplacerPersonne(D,p.id,se.value);}catch(e){toast(e.message);return;}
+      sel=se.value;fermerModal();modifier();toast('Remplacement effectué.');}}]);
+}
+function formPersonne(p){
+  var neuf=!p,v=p||{prenom:'',nom:'',nomNaissance:'',sexe:'F',dateNaissance:null,age:null,decede:false,dateDeces:null,ageDeces:null,profession:'',foyer:null,notes:'',concerne:false,inconnu:false};
+  var iPre=inp('text',v.prenom,{maxlength:80}),iNom=inp('text',v.nom,{maxlength:80}),iNn=inp('text',v.nomNaissance,{maxlength:80});
+  var iSexe=sele([['F','Femme (cercle)'],['M','Homme (carré)'],['X','Non précisé (losange)']],v.sexe);
+  var iDate=inp('date',v.dateNaissance||''),iAge=inp('number',v.age===null?'':v.age,{min:0,max:130});
+  var cDec=chk('Décédé(e)',v.decede),iDd=inp('date',v.dateDeces||''),iAd=inp('number',v.ageDeces===null?'':v.ageDeces,{min:0,max:130});
+  var boxDec=h('div',{class:'rang'},champ('Date du décès',iDd),champ('ou âge au décès',iAd));
+  var iPro=inp('text',v.profession,{maxlength:120});
+  var iFoy=sele([['','Aucun']].concat(D.foyers.map(function(f){return [f.id,f.nom];})),v.foyer||'');
+  var iNotes=h('textarea');iNotes.value=v.notes||'';
+  var cCon=chk('Personne concernée (élève ou usager au centre du suivi)',v.concerne);
+  var cInc=v.inconnu?chk('Personne inconnue (affichée en grisé)',true):null;
+  var rafraichir=function(){boxDec.style.display=cDec.input.checked?'':'none';};
+  cDec.input.addEventListener('change',rafraichir);rafraichir();
+  var err=modal(neuf?'Ajouter une personne':'Modifier la personne',[
+    h('div',{class:'rang'},champ('Prénom *',iPre),champ('Nom',iNom),champ('Nom de naissance',iNn)),
+    champ('Sexe',iSexe),
+    h('div',{class:'rang'},champ('Date de naissance',iDate,'Si renseignée, l\'âge est calculé automatiquement.'),champ('ou âge (années)',iAge,'Utilisé seulement sans date.')),
+    cDec.el,boxDec,champ('Profession / situation',iPro),champ('Foyer',iFoy),champ('Notes',iNotes),cCon.el,cInc?cInc.el:null
+  ],[
+    neuf?null:{label:'Supprimer',cls:'dan',action:function(){confirmer('Supprimer '+Core.nomAffiche(p)+' et tous ses liens ? Les personnes inconnues devenues inutiles seront aussi supprimées.','Supprimer',function(){Core.supprimerPersonne(D,p.id);if(sel===p.id)sel=null;modifier();});}},
+    {label:'Annuler',action:fermerModal},
+    {label:'Enregistrer',cls:'acc',action:function(){
+      if(!iPre.value.trim()){err('Le prénom est obligatoire.');return;}
+      var o={prenom:iPre.value.trim(),nom:iNom.value.trim(),nomNaissance:iNn.value.trim(),sexe:iSexe.value,
+        dateNaissance:iDate.value||null,age:iAge.value===''?null:Number(iAge.value),decede:cDec.input.checked,
+        dateDeces:cDec.input.checked&&iDd.value?iDd.value:null,ageDeces:cDec.input.checked&&iAd.value!==''?Number(iAd.value):null,
+        profession:iPro.value.trim(),foyer:iFoy.value||null,notes:iNotes.value,concerne:cCon.input.checked};
+      if(neuf){var np=Core.creerPersonne(D,o);sel=np.id;}
+      else{o.inconnu=cInc?(cInc.input.checked&&o.prenom===p.prenom&&!o.nom):false;Object.keys(o).forEach(function(k){p[k]=o[k];});}
+      fermerModal();modifier();alerter();}}
+  ].filter(Boolean));
+}
+
+function formLien(bPre){
+  if(!D.personnes.length){toast('Ajoutez d\'abord une première personne.');return;}
+  var rep={},selA=sele([['__new','➕ Nouvelle personne…']].concat(optsPers()),'__new');
+  var selB=sele(optsPers(),bPre||sel||D.personnes[0].id);
+  var selT=sele(Core.TYPES_LIEN,'fratrie');
+  var nPre=inp('text','',{maxlength:80}),nNom=inp('text','',{maxlength:80}),nSexe=sele([['F','Femme'],['M','Homme'],['X','Non précisé']],'F'),nDate=inp('date',''),nAge=inp('number','',{min:0,max:130});
+  var boxNew=h('div',{class:'boite'},h('div',{class:'rang'},champ('Prénom *',nPre),champ('Nom',nNom),champ('Sexe',nSexe)),h('div',{class:'rang'},champ('Date de naissance',nDate),champ('ou âge',nAge)));
+  var zone=h('div',{class:'boite'});
+  var rendre=function(){
+    boxNew.style.display=selA.value==='__new'?'':'none';
+    var t=selT.value,aId=selA.value==='__new'?null:selA.value;
+    zone.textContent='';var vide=true;
+    Core.questions(D,t,aId,selB.value,rep).forEach(function(q){
+      if(!rep[q.cle]||!q.options.some(function(o){return o.v===rep[q.cle];}))rep[q.cle]=q.options[0].v;
+      var se=sele(q.options.map(function(o){return [o.v,o.l];}),rep[q.cle]);
+      se.addEventListener('change',function(){rep[q.cle]=se.value;if(q.cle==='mode'||q.cle==='parentB')rendre();});
+      zone.appendChild(champ(q.label,se));vide=false;});
+    if(t==='conjoint'||t==='exconjoint'){
+      if(!rep.statut)rep.statut=t==='exconjoint'?'divorce':'couple';
+      var ss=sele(Core.STATUTS,rep.statut);ss.addEventListener('change',function(){rep.statut=ss.value;});zone.appendChild(champ('Statut de l\'union',ss));vide=false;}
+    if(t==='adopte'||t==='parent'||t==='enfant'){
+      var tf=Core.TYPES_FIL.filter(function(x){return t==='adopte'?x[0]!=='biologique':true;});
+      rep.filiation=tf.some(function(x){return x[0]===rep.filiation;})?rep.filiation:tf[0][0];
+      {var sf=sele(tf,rep.filiation);sf.addEventListener('change',function(){rep.filiation=sf.value;});zone.appendChild(champ('Type de filiation',sf));vide=false;}}
+    if(t==='libre'){var il=inp('text',rep.libelle||'',{maxlength:80,placeholder:'Ex. : parrain, voisin, éducateur…'});il.addEventListener('input',function(){rep.libelle=il.value;});zone.appendChild(champ('Libellé du lien',il));vide=false;}
+    zone.style.display=vide?'none':'';
+  };
+  [selA,selB].forEach(function(e){e.addEventListener('change',rendre);});
+  selT.addEventListener('change',function(){rep={};rendre();});
+  rendre();
+  var err=modal('Ajouter un lien',[
+    h('div',{class:'phrase'},selA,h('span',{text:'est'}),selT,selB),
+    boxNew,zone,h('div',{class:'aide',text:'Les liens (frère, demi-sœur, oncle, cousin…) sont traduits automatiquement en filiations et unions. Les parents manquants sont créés en « Parent inconnu ».'})
+  ],[{label:'Annuler',action:fermerModal},{label:'Ajouter le lien',cls:'acc',action:function(){
+    var snap=Core.snapshot(D),aId;
+    try{
+      if(selA.value==='__new'){
+        if(!nPre.value.trim()){err('Le prénom de la nouvelle personne est obligatoire.');return;}
+        aId=Core.creerPersonne(D,{prenom:nPre.value.trim(),nom:nNom.value.trim(),sexe:nSexe.value,dateNaissance:nDate.value||null,age:nAge.value===''?null:Number(nAge.value)}).id;
+      }else aId=selA.value;
+      Core.ajouterLien(D,aId,selT.value,selB.value,rep);
+    }catch(e){Core.restaurer(D,snap);err(e.message);return;}
+    fermerModal();sel=aId;modifier();alerter();}}]);
+}
+
+function formLiens(id){
+  var p=pers(id),corps=h('div',{class:'corps',style:'padding:0'});
+  var recharger=function(){modifier();formLiens(id);};
+  var nu=0;
+  D.unions.filter(function(u){return u.p1===id||u.p2===id;}).forEach(function(u){
+    nu++;var o=u.p1===id?u.p2:u.p1,ss=sele(Core.STATUTS,u.statut);
+    ss.addEventListener('change',function(){u.statut=ss.value;recharger();});
+    corps.appendChild(h('div',{class:'ligne'},h('span',{text:'Union avec '+nom(o)}),ss,h('button',{class:'btn pet dan',text:'Supprimer',onclick:function(){Core.supprimerUnion(D,u.id);recharger();}})));
+  });
+  D.filiations.filter(function(f){return f.parent===id||f.enfant===id;}).forEach(function(f){
+    nu++;var ts=sele(Core.TYPES_FIL,f.type);
+    ts.addEventListener('change',function(){if(ts.value==='biologique'&&Core.parentsDe(D,f.enfant,['biologique']).length>=2&&f.type!=='biologique'){toast('Déjà deux parents biologiques.');ts.value=f.type;return;}f.type=ts.value;recharger();});
+    corps.appendChild(h('div',{class:'ligne'},h('span',{text:f.parent===id?nom(id)+' est parent de '+nom(f.enfant):nom(f.parent)+' est parent de '+nom(id)}),ts,h('button',{class:'btn pet dan',text:'Supprimer',onclick:function(){Core.supprimerFiliation(D,f.id);recharger();}})));
+  });
+  if(!nu)corps.appendChild(h('p',{class:'aide',text:'Aucun lien direct (filiation ou union).'}));
+  modal('Liens de '+Core.nomAffiche(p),corps,[{label:'Fermer',cls:'acc',action:fermerModal}]);
+}
+
+var COULEURS=['#4a90a4','#c27c3a','#6f9a3d','#9b5fa5','#c0556a','#4f6dbd'];
+function formFoyer(f){
+  var neuf=!f,iNom=inp('text',f?f.nom:'',{maxlength:80,placeholder:'Ex. : Domicile de la mère'});
+  var iCol=inp('color',f?f.couleur:COULEURS[D.foyers.length%COULEURS.length]);
+  var boites=D.personnes.map(function(p){return {p:p,c:chk(Core.nomAffiche(p),f&&p.foyer===f.id)};});
+  var err=modal(neuf?'Ajouter un foyer':'Modifier le foyer',[champ('Nom du foyer',iNom),champ('Couleur',iCol),h('div',{class:'champ'},h('span',{text:'Personnes du foyer'}),h('div',{class:'checks'},boites.map(function(b){return b.c.el;})))],[
+    neuf?null:{label:'Supprimer',cls:'dan',action:function(){confirmer('Supprimer le foyer « '+f.nom+' » ?','Supprimer',function(){D.personnes.forEach(function(p){if(p.foyer===f.id)p.foyer=null;});D.foyers=D.foyers.filter(function(x){return x.id!==f.id;});modifier();});}},
+    {label:'Annuler',action:fermerModal},
+    {label:'Enregistrer',cls:'acc',action:function(){
+      if(!iNom.value.trim()){err('Le nom du foyer est obligatoire.');return;}
+      var o=f;if(neuf){var m=0;D.foyers.forEach(function(x){var n=parseInt(x.id.slice(1),10);if(n>m)m=n;});o={id:'h'+(m+1)};D.foyers.push(o);}
+      o.nom=iNom.value.trim();o.couleur=iCol.value;
+      boites.forEach(function(b){if(b.c.input.checked)b.p.foyer=o.id;else if(b.p.foyer===o.id)b.p.foyer=null;});
+      fermerModal();modifier();}}].filter(Boolean));
+}
+function formRelation(r){
+  if(D.personnes.length<2){toast('Il faut au moins deux personnes.');return;}
+  var neuf=!r,ps=optsPers();
+  var sDe=sele(ps,r?r.de:(sel||D.personnes[0].id)),sVers=sele(ps,r?r.vers:D.personnes.filter(function(p){return p.id!==(sel||D.personnes[0].id);})[0].id),sT=sele(Core.TYPES_REL,r?r.type:'proche');
+  var err=modal(neuf?'Ajouter une relation émotionnelle':'Modifier la relation',[
+    h('div',{class:'phrase'},sDe,h('span',{text:'→'}),sVers),champ('Type de relation',sT),
+    h('div',{class:'aide',text:'Pour « Emprise / maltraitance », la flèche va de la personne qui exerce vers la personne subissant.'})],[
+    neuf?null:{label:'Supprimer',cls:'dan',action:function(){D.relations=D.relations.filter(function(x){return x!==r;});fermerModal();modifier();}},
+    {label:'Annuler',action:fermerModal},
+    {label:'Enregistrer',cls:'acc',action:function(){
+      if(sDe.value===sVers.value){err('Choisissez deux personnes différentes.');return;}
+      if(neuf){var m=0;D.relations.forEach(function(x){var n=parseInt(x.id.slice(1),10);if(n>m)m=n;});D.relations.push({id:'r'+(m+1),de:sDe.value,vers:sVers.value,type:sT.value});}
+      else{r.de=sDe.value;r.vers=sVers.value;r.type=sT.value;}
+      fermerModal();modifier();}}].filter(Boolean));
+}
+function formLibre(l){
+  var il=inp('text',l.libelle,{maxlength:80});
+  var err=modal('Lien libre',[h('p',{text:nom(l.de)+' → '+nom(l.vers)}),champ('Libellé',il)],[
+    {label:'Supprimer',cls:'dan',action:function(){D.liensLibres=D.liensLibres.filter(function(x){return x!==l;});fermerModal();modifier();}},
+    {label:'Annuler',action:fermerModal},
+    {label:'Enregistrer',cls:'acc',action:function(){if(!il.value.trim()){err('Libellé obligatoire.');return;}l.libelle=il.value.trim();fermerModal();modifier();}}]);
+}
+function formDossier(){
+  var iT=inp('text',D.dossier.titre,{maxlength:150}),iA=inp('text',D.dossier.auteur||'',{maxlength:100,placeholder:'Ex. : Infirmière scolaire'});
+  var prev=h('div');
+  var maj_=function(){prev.textContent='';if(D.dossier.logo){prev.appendChild(h('img',{class:'logoprev',src:D.dossier.logo,alt:'Logo'}));prev.appendChild(h('button',{class:'btn pet',type:'button',text:'Retirer le logo',onclick:function(){D.dossier.logo=null;modifier();maj_();}}));}else prev.appendChild(h('span',{class:'aide',text:'Aucun logo.'}));};
+  maj_();
+  var err=modal('Dossier',[champ('Titre',iT),champ('Auteur (fonction)',iA),h('div',{class:'champ'},h('span',{text:'Logo de l\'établissement (PNG ou JPG)'}),h('button',{class:'btn',type:'button',text:'Choisir un logo',onclick:function(){$('fLogo').onchange=function(ev){
+    var fi=ev.target.files[0];ev.target.value='';if(!fi)return;
+    var fr=new FileReader();fr.onload=function(){var im=new Image();im.onload=function(){
+      var k=Math.min(1,300/im.height,600/im.width),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);D.dossier.logo=c.toDataURL('image/png');modifier();maj_();};
+      im.onerror=function(){err('Image illisible.');};im.src=fr.result;};
+    fr.onerror=function(){err('Lecture du fichier impossible.');};fr.readAsDataURL(fi);};$('fLogo').click();}}),prev)],[
+    {label:'Fermer',action:function(){D.dossier.titre=iT.value.trim()||'Situation familiale de …';D.dossier.auteur=iA.value.trim();fermerModal();modifier();}}]);
+}
+function formAlertes(){
+  var al=Core.coherence(D);
+  modal('Alertes de cohérence',al.length?h('ul',null,al.map(function(a){return h('li',{text:a});})):h('p',{text:'Aucune alerte.'}),[{label:'Fermer',action:fermerModal}]);
+}
+
+/* ===== Fichiers ===== */
+function slug(t){return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+function enregistrer(){
+  var c=D.personnes.filter(function(p){return p.concerne;})[0]||D.personnes.filter(function(p){return !p.inconnu;})[0];
+  var nm=slug(c?(c.nom||c.prenom):'')||'DOSSIER';
+  var blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob),a=h('a',{href:url,download:'famille-'+nm+'-'+Core.aujourdhui()+'.json'});
+  document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},2000);
+  dirty=false;maj();toast('Fichier enregistré dans votre dossier de téléchargements.');
+}
+function garde(cb){if(dirty)confirmer('Des modifications ne sont pas enregistrées. Les perdre ?','Continuer sans enregistrer',cb);else cb();}
+function charger(data,ex){D=Core.normaliser(data);sel=null;dirty=false;exemple=!!ex;vue.refit=true;maj();}
+function nouveau(){D=Core.nouveauDossier();sel=null;dirty=false;exemple=false;vue.refit=true;maj();}
+function chargerExemple(){var data=JSON.parse(JSON.stringify(EXEMPLE));if(!Core.valider(data).ok){toast('Exemple indisponible.');return;}charger(data,true);}
+$('fOuvrir').addEventListener('change',function(ev){
+  var fi=ev.target.files[0];ev.target.value='';if(!fi)return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    var data;try{data=JSON.parse(fr.result);}catch(e){modal('Fichier invalide',h('p',{text:'Ce fichier n\'est pas un JSON lisible.'}),[{label:'Fermer',action:fermerModal}]);return;}
+    var v=Core.valider(data);
+    if(!v.ok){modal('Fichier invalide',[h('p',{text:'Ce dossier ne peut pas être ouvert :'}),h('ul',null,v.erreurs.slice(0,8).map(function(x){return h('li',{text:x});}))],[{label:'Fermer',action:fermerModal}]);return;}
+    charger(data);
+  };
+  fr.onerror=function(){modal('Erreur',h('p',{text:'Lecture du fichier impossible.'}),[{label:'Fermer',action:fermerModal}]);};
+  fr.readAsText(fi);
+});
+window.addEventListener('beforeunload',function(e){if(dirty){e.preventDefault();e.returnValue='';return '';}});
+
+/* ===== Export PDF ===== */
+function dateFr(){return new Date().toLocaleDateString('fr-FR');}
+function mini(fn){var sv=s('svg',{viewBox:'0 0 44 24'});fn(sv);return sv;}
+function legende(lay,o){
+  var items=[],ps=D.personnes;
+  var has=function(f){return ps.some(f);};
+  var it=function(fn,label){items.push({svg:mini(fn),label:label});};
+  var sym=function(sexe,opt){return function(sv){var g=s('g',{transform:'translate(22 12) scale(.42) translate(-22 -12)'});symbole(g,sexe,22,12,opt);sv.appendChild(g);};};
+  if(has(function(p){return p.sexe==='M';}))it(sym('M',{}),'Homme');
+  if(has(function(p){return p.sexe==='F';}))it(sym('F',{}),'Femme');
+  if(has(function(p){return p.sexe==='X';}))it(sym('X',{}),'Non précisé');
+  if(has(function(p){return p.decede;}))it(sym('M',{decede:true}),'Décédé(e)');
+  if(has(function(p){return p.concerne;}))it(sym('M',{concerne:true}),'Personne concernée');
+  if(has(function(p){return p.inconnu;}))it(sym('M',{inconnu:true}),'Personne inconnue');
+  var ligne=function(dash,extra){return function(sv){sv.appendChild(s('line',{x1:2,y1:12,x2:42,y2:12,stroke:TRAIT,'stroke-width':2,'stroke-dasharray':dash}));if(extra)extra(sv);};};
+  var un={},fi={};LAY.unions.forEach(function(u){if(!u.virtuel)un[u.statut]=1;});D.filiations.forEach(function(f){fi[f.type]=1;});
+  if(un.marie||un.pacse||un.veuf)it(ligne(null),'Mariage / PACS');
+  if(un.couple)it(ligne('7 5'),'Concubinage');
+  var bar=function(n){return function(sv){for(var i=0;i<n;i++)sv.appendChild(s('line',{x1:20+i*4,y1:20,x2:24+i*4,y2:4,stroke:TRAIT,'stroke-width':2}));};};
+  if(un.separe)it(ligne(null,bar(1)),'Séparation');
+  if(un.divorce)it(ligne(null,bar(2)),'Divorce');
+  if(fi.biologique)it(ligne(null),'Filiation biologique');
+  if(fi.adoptif)it(ligne('7 5'),'Adoption');
+  if(fi.accueil)it(ligne('2 4'),'Accueil / placement');
+  if(fi['beau-parent'])it(ligne('8 3 2 3'),'Beau-parent');
+  if(o.foyers)LAY.foyers.forEach(function(f){it(function(sv){sv.appendChild(s('rect',{x:6,y:4,width:32,height:16,rx:4,fill:f.couleur,'fill-opacity':0.1,stroke:f.couleur,'stroke-width':2,'stroke-dasharray':f.contour?'5 3':null}));if(!f.contour)sv.appendChild(s('circle',{cx:22,cy:12,r:5,fill:f.couleur}));},'Foyer : '+f.nom);});
+  if(o.relations==='tableau'||o.relations==='arbre'){
+    var seen={};D.relations.forEach(function(r){seen[r.type]=1;});
+    Core.TYPES_REL.forEach(function(x){if(!seen[x[0]])return;
+      it(o.relations==='arbre'?function(sv){echRel(sv,x[0]);}:function(sv){sv.appendChild(s('circle',{cx:22,cy:12,r:5,fill:coulRel(x[0])}));},x[1]);});
+  }
+  if(D.liensLibres.length)it(function(sv){sv.appendChild(s('line',{x1:2,y1:12,x2:42,y2:12,stroke:'#64748b','stroke-width':1.4,'stroke-dasharray':'1 5','stroke-linecap':'round'}));},'Lien libre');
+  return items.map(function(x){return h('span',{class:'it'},x.svg,h('span',{text:x.label}));});
+}
+function preparerImpression(o){
+  var imp=$('impression');imp.textContent='';
+  var dim=o.format==='A3'?{w:420,h:297}:{w:297,h:210};
+  var st=$('pageStyle');if(!st){st=h('style',{id:'pageStyle'});document.head.appendChild(st);}
+  st.textContent='@page{size:'+o.format+' landscape;margin:10mm;@bottom-right{content:"Page "counter(page);font-size:8pt;color:#444}}';
+  var lay=LAY,anon=o.anon;
+  var titre=anon?'Situation familiale (document anonymisé)':D.dossier.titre;
+  var eh=h('div',{class:'eh'},D.dossier.logo?h('img',{src:D.dossier.logo,alt:''}):null,h('h1',{text:titre}),h('div',{class:'meta'},h('div',{text:'Édité le '+dateFr()}),D.dossier.auteur?h('div',{text:D.dossier.auteur}):null));
+  var svg=s('svg',{viewBox:'0 0 '+lay.largeur+' '+lay.hauteur,preserveAspectRatio:'xMidYMid meet'});
+  var g=s('g');svg.appendChild(g);var od={anon:anon,foyers:o.foyers,interactif:false};
+  if(o.relations==='arbre'&&(D.relations.length||D.liensLibres.length)){od.arcs=D.relations;od.libres=D.liensLibres;od.attenue=true;}else if(o.relations==='tableau')od.pastilles=true;
+  dessiner(g,lay,od);
+  var trel=o.relations==='tableau'&&(D.relations.length+D.liensLibres.length)>0;
+  var leg=h('div',{class:'lg'},legende(lay,o));
+  var p1=h('section',{class:'pp'+(o.page2||trel?' brk':''),style:'height:'+(dim.h-20-3)+'mm'},eh,h('div',{class:'tb'},svg),leg,h('div',{class:'pied',text:'Document confidentiel, données à caractère personnel'}));
+  imp.appendChild(p1);
+  if(o.page2){
+    var conc=D.personnes.filter(function(p){return p.concerne;})[0];
+    var cols=[anon?'Identité':'Nom',anon?null:'Prénom','Âge','Profession','Foyer','Lien'+(conc?' avec '+Core.nomAffiche(conc,anon):''),anon?null:'Notes'].filter(Boolean);
+    var tri=D.personnes.slice().sort(function(a,b){return (a.concerne?0:1)-(b.concerne?0:1)||norm(Core.nomAffiche(a)).localeCompare(norm(Core.nomAffiche(b)));});
+    var lignes=tri.map(function(p){
+      var fo=D.foyers.filter(function(f){return f.id===p.foyer;})[0],lien=p.concerne?'Personne concernée':(conc?maj1(Core.decrireLien(D,p.id,conc.id)||''):'');
+      var cel=anon?[Core.nomAffiche(p,true)]:[(p.nom||'').toUpperCase(),p.prenom];
+      cel=cel.concat([Core.libelleAge(p),p.inconnu?'':p.profession,fo?fo.nom:'',lien]);
+      if(!anon)cel.push(p.notes||'');
+      return h('tr',null,cel.map(function(c,i){return h('td',{class:!anon&&i===cel.length-1?'nt':'',text:c});}));
+    });
+    var tbl=h('table',null,h('thead',null,h('tr',null,cols.map(function(c){return h('th',{text:c});}))),
+      h('tfoot',null,h('tr',null,h('td',{colspan:cols.length,class:'pied2',text:'Document confidentiel, données à caractère personnel'}))),h('tbody',null,lignes));
+    imp.appendChild(h('section',{class:'p2'},h('h2',{text:'Détail des personnes — '+titre}),tbl,trel?h('h2',{class:'sp',text:'Relations'}):null,trel?tableauRel(anon,false):null));
+  }else if(trel)imp.appendChild(h('section',{class:'p2'},h('h2',{text:'Relations — '+titre}),tableauRel(anon,true)));
+}
+function tableauRel(anon,pied){
+  var rows=D.relations.map(function(r){
+    return h('tr',null,h('td',{class:'cp'},h('span',{class:'pd',style:'background:'+coulRel(r.type)})),h('td',{text:nom(r.de,anon)}),h('td',{text:libRel(r.type)+(r.type==='emprise'?' (A vers B)':'')}),h('td',{text:nom(r.vers,anon)}));});
+  D.liensLibres.forEach(function(l){rows.push(h('tr',null,h('td',{class:'cp'}),h('td',{text:nom(l.de,anon)}),h('td',{text:l.libelle+' (lien libre)'}),h('td',{text:nom(l.vers,anon)})));});
+  return h('table',null,h('thead',null,h('tr',null,['','Personne A','Relation','Personne B'].map(function(c){return h('th',{text:c});}))),
+    pied?h('tfoot',null,h('tr',null,h('td',{colspan:4,class:'pied2',text:'Document confidentiel, données à caractère personnel'}))):null,h('tbody',null,rows));
+}
+function echelleTexte(format){ /* taille du texte (mm) sur la feuille */
+  if(!LAY)return 99;
+  var bw=(format==='A3'?420:297)-20,bh=(format==='A3'?297:210)-20-45;
+  return 12*Math.min(bw/LAY.largeur,bh/LAY.hauteur);
+}
+function formPdf(){
+  if(!D.personnes.length){toast('Rien à exporter.');return;}
+  var rF=sele([['A4','A4 paysage'],['A3','A3 paysage']],D.personnes.length>30?'A3':'A4');
+  var c2=chk('Page 2 : tableau des personnes et notes',true),ca=chk('Anonymiser (initiales, notes retirées)',false),cf=chk('Afficher les foyers',aff.foyers),cr=sele([['aucune','Masquées'],['tableau','Tableau'],['arbre','Sur l\'arbre']],'tableau');
+  var info=h('div',{class:'aide'});
+  var rf=function(){var t=echelleTexte(rF.value);info.textContent=(D.personnes.length>30?D.personnes.length+' personnes : ':'')+(t<2.3&&rF.value==='A4'?'le texte sera très petit en A4, le format A3 est conseillé.':'taille du texte estimée : '+(t/0.3528).toFixed(1)+' pt.');};
+  rF.addEventListener('change',rf);rf();
+  modal('Exporter en PDF',[champ('Format',rF),c2.el,ca.el,cf.el,champ('Relations émotionnelles',cr),info,
+    h('div',{class:'aide',text:'La fenêtre d\'impression du navigateur va s\'ouvrir : choisissez « Enregistrer au format PDF » comme imprimante, orientation paysage, marges par défaut, sans en-têtes ni pieds de page du navigateur.'})],[
+    {label:'Annuler',action:fermerModal},
+    {label:'Imprimer / Enregistrer en PDF',cls:'acc',action:function(){
+      var o={format:rF.value,page2:c2.input.checked,anon:ca.input.checked,foyers:cf.input.checked,relations:cr.value};
+      fermerModal();preparerImpression(o);document.body.classList.add('impression');
+      var fin=function(){document.body.classList.remove('impression');$('impression').textContent='';};
+      window.addEventListener('afterprint',fin,{once:true});
+      setTimeout(function(){window.print();},50);}}]);
+}
+
+
+/* ===== Tutoriel ===== */
+function figSym(sexe,opt){return function(sv){var g=s('g',{transform:'translate(22 12) scale(.42) translate(-22 -12)'});symbole(g,sexe,22,12,opt);sv.appendChild(g);};}
+function figLigne(dash,barres,vert){return function(sv){
+  if(vert){sv.appendChild(s('line',{x1:22,y1:2,x2:22,y2:22,stroke:TRAIT,'stroke-width':2,'stroke-dasharray':dash}));return;}
+  sv.appendChild(s('line',{x1:2,y1:12,x2:42,y2:12,stroke:TRAIT,'stroke-width':2,'stroke-dasharray':dash}));
+  for(var i=0;i<barres;i++)sv.appendChild(s('line',{x1:20+i*4,y1:20,x2:24+i*4,y2:4,stroke:TRAIT,'stroke-width':2}));};}
+function fig(fn,label){var sv=s('svg',{viewBox:'0 0 44 24'});fn(sv);return h('div',{class:'fig'},sv,h('span',{text:label}));}
+function pt(t){return h('p',{text:t});}
+var ETAPES=[
+  ['Bienvenue',function(){return [
+    pt('Cet outil dessine un arbre familial (génogramme) pour documenter une situation : composition de la famille, liens, foyers et relations.'),
+    pt('Le principe : vous ajoutez des personnes, vous les reliez par des liens de parenté écrits en phrases simples, et l\'arbre se construit tout seul.'),
+    pt('L\'application fonctionne hors ligne. Aucune donnée n\'est envoyée sur Internet : tout reste sur cet ordinateur, dans le fichier que vous enregistrez.')];}],
+  ['Ajouter une personne',function(){return [
+    pt('Cliquez sur « + Personne » dans la colonne de gauche. Seul le prénom est obligatoire.'),
+    h('ul',null,h('li',{text:'Renseignez la date de naissance (l\'âge est alors calculé) ou, à défaut, l\'âge.'}),h('li',{text:'Cochez « Décédé(e) » si besoin, ajoutez la profession, un foyer et des notes.'}),h('li',{text:'Cochez « Personne concernée » pour l\'élève ou l\'usager au centre du suivi : elle est entourée en orange.'})),
+    pt('Un double-clic sur une personne dans l\'arbre ouvre sa fiche pour la modifier.')];}],
+  ['Relier deux personnes',function(){return [
+    pt('Cliquez sur « + Lien ». Le lien se lit comme une phrase : « X est le/la … de Y ».'),
+    h('div',{class:'ex',text:'Exemple : « Léa » est la fille de « Marc ».'}),
+    pt('Selon le lien choisi, une question complémentaire peut apparaître. Par exemple, pour « Théo est le fils de Sophie », l\'outil demande « Qui est l\'autre parent ? » et propose les conjoints de Sophie, ou « Non renseigné ». Répondre correctement permet de distinguer frère et demi-frère.'),
+    h('div',{class:'ex',text:'Frère / demi-frère : pour « Théo est le demi-frère de Léa », l\'outil demande quel parent ils ont en commun ; l\'autre parent de Théo est créé en « Parent inconnu » si nécessaire.'}),
+    pt('Les liens sont traduits automatiquement en filiations et en unions. Le bouton « Gérer les liens » de la fiche permet de les corriger.')];}],
+  ['Lire l\'arbre',function(){return [
+    pt('Les symboles suivent les conventions du génogramme.'),
+    h('div',{class:'figs'},
+      fig(figSym('M',{}),'Homme (carré)'),fig(figSym('F',{}),'Femme (cercle)'),fig(figSym('X',{}),'Non précisé (losange)'),
+      fig(figSym('M',{decede:true}),'Décédé(e) (croix)'),fig(figSym('M',{concerne:true}),'Personne concernée'),fig(figSym('M',{inconnu:true}),'Personne inconnue'),
+      fig(figLigne(null,0),'Mariage / PACS'),fig(figLigne('7 5',0),'Concubinage'),fig(figLigne(null,1),'Séparation'),
+      fig(figLigne(null,2),'Divorce'),fig(figLigne('7 5',0,true),'Adoption (trait tireté)'))];}],
+  ['Foyers',function(){return [
+    pt('Un foyer regroupe les personnes qui vivent ensemble : domicile de la mère, du père, famille d\'accueil…'),
+    pt('Cliquez sur « + » à côté de « Foyers », donnez un nom et une couleur, puis cochez les personnes concernées. Un contour coloré tireté entoure le groupe ; une personne isolée porte une pastille de la couleur du foyer.'),
+    pt('La case « Foyers » sous l\'arbre permet de les masquer ou de les afficher.')];}],
+  ['Relations émotionnelles',function(){
+    var cl=Core.TYPES_REL.map(function(x){return h('div',{class:'fig'},h('span',{class:'pd',style:'background:'+coulRel(x[0])}),h('span',{text:x[1]}));});
+    return [
+    pt('Ajoutez une relation avec « + » à côté de « Relations » : choisissez deux personnes et le type de relation. Par défaut, l\'arbre n\'affiche aucun trait émotionnel, pour rester lisible.'),
+    pt('Une personne qui a des relations porte de petites pastilles de couleur près de son symbole, une par type.'),
+    h('div',{class:'figs',style:'margin-bottom:8px'},cl),
+    h('ul',null,h('li',{text:'Cliquez sur une personne : ses relations s\'affichent en arcs colorés, le reste de l\'arbre s\'atténue. Cliquez dans le vide pour revenir à la vue normale.'}),
+      h('li',{text:'Bouton « Vue relations » : affiche toutes les relations en arcs.'}),
+      h('li',{text:'Pour l\'emprise / maltraitance, la flèche va de la personne qui exerce vers celle qui subit.'}),
+      h('li',{text:'La fiche en bas de l\'écran liste les relations de la personne, avec modification et suppression.'}))];}],
+  ['Enregistrer et ouvrir',function(){return [
+    pt('Il n\'y a aucune sauvegarde automatique. Cliquez sur « Enregistrer » : un fichier JSON est téléchargé. La mention « modifications non enregistrées » vous rappelle de le faire.'),
+    pt('Chaque famille correspond à un fichier JSON. Pour partager un dossier, il suffit de transmettre ce fichier (par un canal sécurisé) ; la personne le rouvre avec « Ouvrir ».'),
+    pt('Rouvrez-le à tout moment avec « Ouvrir » pour poursuivre le travail.')];}],
+  ['Export PDF',function(){return [
+    pt('« Exporter en PDF » propose : le format A4 ou A3 paysage, une page 2 avec le tableau des personnes et des notes, les foyers, et les relations (masquées, en tableau ou sur l\'arbre).'),
+    pt('L\'option « Anonymiser » remplace les noms par des initiales et retire les notes.'),
+    pt('Dans la fenêtre d\'impression qui s\'ouvre, choisissez « Enregistrer au format PDF » comme destination, en paysage :'),
+    h('ul',null,h('li',{text:'Chrome : décochez « En-têtes et pieds de page » et cochez « Graphiques d\'arrière-plan » (Plus de paramètres).'}),h('li',{text:'Firefox : décochez « Imprimer les en-têtes et pieds de page » et cochez « Imprimer les arrière-plans » (Plus de paramètres).'})),
+    h('div',{class:'ex',text:'Confidentialité (RGPD) : ces documents contiennent des données personnelles sensibles. Ne les partagez que dans le cadre de votre mission, conservez-les en lieu sûr et privilégiez la version anonymisée dès que possible.'})];}]
+];
+function tuto(i){
+  var n=ETAPES.length,e=ETAPES[i];
+  modal(e[0],h('div',{class:'tuto'},e[1](),h('div',{class:'tnum',text:(i+1)+' / '+n})),[
+    {label:'Fermer',action:fermerModal},
+    i>0?{label:'Précédent',action:function(){tuto(i-1);}}:null,
+    i<n-1?{label:'Suivant',cls:'acc',action:function(){tuto(i+1);}}:{label:'Terminer',cls:'acc',action:fermerModal}].filter(Boolean));
+}
+
+/* ===== Branchements ===== */
+$('bAjP').addEventListener('click',function(){formPersonne(null);});
+$('bLien').addEventListener('click',function(){formLien(sel);});
+$('bAjF').addEventListener('click',function(){formFoyer(null);});
+$('bAjR').addEventListener('click',function(){formRelation(null);});
+$('bNouveau').addEventListener('click',function(){garde(nouveau);});
+$('bOuvrir').addEventListener('click',function(){garde(function(){$('fOuvrir').click();});});
+$('bEnreg').addEventListener('click',enregistrer);
+$('bDossier').addEventListener('click',formDossier);
+$('bPdf').addEventListener('click',formPdf);
+$('bAlertes').addEventListener('click',formAlertes);
+$('rech').addEventListener('input',majListes);
+$('cFoyers').addEventListener('change',function(){aff.foyers=this.checked;maj();});
+$('bVueRel').addEventListener('click',function(){aff.vueRel=!aff.vueRel;this.classList.toggle('on',aff.vueRel);this.setAttribute('aria-pressed',aff.vueRel?'true':'false');maj();});
+$('bAide').addEventListener('click',function(){tuto(0);});
+$('aPers').addEventListener('click',function(){formPersonne(null);});
+$('aOuvrir').addEventListener('click',function(){$('fOuvrir').click();});
+$('aAide').addEventListener('click',function(){tuto(0);});
+$('aEx').addEventListener('click',chargerExemple);
+$('zPlus').addEventListener('click',function(){zoom(1.25);});
+$('zMoins').addEventListener('click',function(){zoom(0.8);});
+$('zFit').addEventListener('click',recentrer);
+var sv=$('arbre'),pan=null;
+sv.addEventListener('click',function(e){if(vue.moved)return;if(e.target.closest&&e.target.closest('.noeud'))return;if(sel){sel=null;maj();}});
+sv.addEventListener('wheel',function(e){e.preventDefault();var r=sv.getBoundingClientRect();zoom(Math.pow(1.1,-e.deltaY/100),e.clientX-r.left,e.clientY-r.top);},{passive:false});
+sv.addEventListener('pointerdown',function(e){pan={x:e.clientX,y:e.clientY,vx:vue.x,vy:vue.y};vue.moved=false;});
+window.addEventListener('pointermove',function(e){if(!pan)return;var dx=e.clientX-pan.x,dy=e.clientY-pan.y;if(!vue.moved&&Math.abs(dx)+Math.abs(dy)<4)return;vue.moved=true;sv.classList.add('pan');vue.x=pan.vx+dx;vue.y=pan.vy+dy;appliquerVue();});
+window.addEventListener('pointerup',function(){pan=null;sv.classList.remove('pan');setTimeout(function(){vue.moved=false;},0);});
+window.addEventListener('resize',function(){appliquerVue();});
+maj();
+})();
+</script>
+</body>
+</html>
