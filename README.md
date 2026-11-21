@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/installation-aucune-34495e" alt="Sans installation">
   <img src="https://img.shields.io/badge/d%C3%A9pendances-0-34495e" alt="Zéro dépendance">
   <img src="https://img.shields.io/badge/navigateurs-Firefox%20%7C%20Chrome-34495e" alt="Navigateurs">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-34495e" alt="Licence MIT"></a>
 </p>
 
 <p align="center">
@@ -43,6 +44,7 @@
 - [Compatibilité](#compatibilité)
 - [Pour les développeurs](#pour-les-développeurs)
 - [Conception](#conception)
+- [Licence](#licence)
 
 ---
 
@@ -233,3 +235,11 @@ docs/                     logo, bannière et captures d'écran
 Cet outil a été **conçu et développé avec l'aide de l'intelligence artificielle** : [Claude](https://claude.com/claude-code), l'assistant d'Anthropic, utilisé via Claude Code. Le projet est piloté par David Collet, qui a défini les besoins avec des professionnelles de terrain, puis testé et validé chaque fonctionnalité.
 
 L'IA n'intervient qu'à la conception : **l'application elle-même n'utilise aucune IA** et ne se connecte à aucun service.
+
+---
+
+## Licence
+
+Ce projet est distribué sous **licence [MIT](LICENSE)**, libre et open source. Vous pouvez l'utiliser, le copier, le modifier, le partager et le redistribuer, y compris dans votre structure ou à des fins commerciales. La seule condition est de conserver la mention de copyright et le texte de la licence.
+
+Le logiciel est fourni « tel quel », sans garantie.
