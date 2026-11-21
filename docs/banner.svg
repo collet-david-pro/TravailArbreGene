@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="200" viewBox="0 0 900 200">
+  <rect width="900" height="200" rx="24" fill="#34495e"/>
+  <g transform="translate(40 28) scale(0.56)">
+    <rect x="8" y="8" width="240" height="240" rx="52" fill="#2c3e50"/>
+    <g fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="44" y="52" width="52" height="52" rx="4"/><circle cx="186" cy="78" r="27"/>
+      <path d="M96 78 H159"/><path d="M128 78 V136 M78 136 H178 M78 136 V160 M178 136 V160"/><circle cx="78" cy="186" r="25"/>
+    </g>
+    <rect x="152" y="160" width="52" height="52" rx="4" fill="#d9772b" stroke="#ffffff" stroke-width="10"/>
+  </g>
+  <text x="215" y="92" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="46" font-weight="700" fill="#ffffff">TravailArbreGene</text>
+  <text x="217" y="132" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="21" fill="#d6dee6">Génogramme professionnel · 100 % hors ligne · un seul fichier HTML</text>
+  <rect x="217" y="150" width="64" height="5" rx="2.5" fill="#d9772b"/>
+</svg>
