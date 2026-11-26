@@ -1,0 +1,19 @@
+{
+  "titre": "Arbre généalogique et génogramme",
+  "accroche": "Dessiner le génogramme d'un élève hors ligne, pour les infirmières scolaires et les assistantes sociales.",
+  "univers": "pro",
+  "categorie": "Outils EPLE",
+  "statut": "en-production",
+  "debut": "2026-11",
+  "couverture": "docs/captures/arbre.png",
+  "captures": [
+    { "src": "docs/captures/relations.png", "legende": "Relations d'une personne" },
+    { "src": "docs/captures/fiche.png", "legende": "Fiche et situation administrative" },
+    { "src": "docs/captures/synthese.png", "legende": "Synthèse texte pour un rapport" }
+  ],
+  "ia": {
+    "outils": ["Claude Code"],
+    "role": "généré",
+    "note": "Conçu et codé par Claude (Claude Code). David a défini le besoin avec une infirmière scolaire et une assistante sociale, puis testé et validé chaque étape. L'application elle-même n'utilise aucune IA."
+  }
+}
