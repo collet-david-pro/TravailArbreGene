@@ -258,6 +258,7 @@ function ajouterUnion(d,a,b,statut){
   if(a===b)throw new Error('Une personne ne peut pas être unie à elle-même.');
   if(!pers(d,a)||!pers(d,b))throw new Error('Personne introuvable.');
   statut=statut||'couple';
+  if(estAncetre(d,a,b)||estAncetre(d,b,a))throw new Error('Union impossible entre un ascendant et son descendant.');
   var ex=trouverUnion(d,a,b);if(ex){ex.statut=statut;return ex;}
   var u={id:nextId(d.unions,'u'),p1:a,p2:b,statut:statut};d.unions.push(u);return u;
 }
@@ -295,6 +296,7 @@ function retirer(d,id){
 function definirGroupe(d,id,membres,libelle){
   var m=[];(membres||[]).forEach(function(x){if(pers(d,x)&&m.indexOf(x)<0)m.push(x);});
   if(m.length<3)throw new Error('Un groupe parental réunit au moins trois personnes (pour deux, utilisez une union).');
+  m.forEach(function(a){m.forEach(function(b){if(a!==b&&estAncetre(d,a,b))throw new Error(nomAffiche(pers(d,a))+' est un ascendant de '+nomAffiche(pers(d,b))+' : ils ne peuvent pas former un même groupe parental.');});});
   d.groupes=d.groupes||[];
   var g=id?d.groupes.filter(function(x){return x.id===id;})[0]:null;
   if(!g){g={id:nextId(d.groupes,'g'),membres:[],libelle:''};d.groupes.push(g);}
@@ -876,6 +878,12 @@ function calculerDisposition(d,opt){
   var groupes=[],grDe={};
   (d.groupes||[]).forEach(function(G){var m=[];(G.membres||[]).forEach(function(x){if(idx[x]!==undefined&&!grDe[x]&&m.indexOf(x)<0)m.push(x);});
     if(m.length<2)return;var o={id:G.id,membres:m,libelle:G.libelle||''};groupes.push(o);m.forEach(function(x){grDe[x]=o;});});
+  var parentsDe1={};fils.forEach(function(f){(parentsDe1[f.enfant]||(parentsDe1[f.enfant]=[])).push(f.parent);});
+  var ascendant=function(a,b){var vu={},pile=[b];while(pile.length){var x=pile.pop();var ps=parentsDe1[x]||[];for(var i=0;i<ps.length;i++){if(ps[i]===a)return true;if(!vu[ps[i]]){vu[ps[i]]=1;pile.push(ps[i]);}}}return false;};
+  var lieeVerticale=function(a,b){return ascendant(a,b)||ascendant(b,a);};
+  /* un ascendant et son descendant ne sont jamais mis au même rang (fichier ancien ou incohérent) */
+  groupes.forEach(function(G){var m=[];G.membres.forEach(function(x){if(m.every(function(y){return !lieeVerticale(x,y);}))m.push(x);else delete grDe[x];});G.membres=m;});
+  groupes=groupes.filter(function(G){if(G.membres.length>=2)return true;G.membres.forEach(function(x){delete grDe[x];});return false;});
   var memeGroupe=function(a,b){return !!grDe[a]&&grDe[a]===grDe[b];};
   var grEnf={};
   ids.forEach(function(id){var c={};fils.forEach(function(f){if(f.enfant!==id||!grDe[f.parent])return;var G=grDe[f.parent];c[G.id]=c[G.id]||[];if(c[G.id].indexOf(f.parent)<0)c[G.id].push(f.parent);});
@@ -895,6 +903,7 @@ function calculerDisposition(d,opt){
     if(bp.length===2&&!memeGroupe(bp[0],bp[1])&&!uMap[key(bp[0],bp[1])]){var o={id:'v'+(++vn),a:bp[0],b:bp[1],statut:null,virtuel:true};unions.push(o);uMap[key(bp[0],bp[1])]=o;}
   });
   /* paires de personnes au même rang : unions et membres d'un même groupe */
+  unions=unions.filter(function(u){if(!lieeVerticale(u.a,u.b))return true;delete uMap[key(u.a,u.b)];return false;});
   var paires=unions.map(function(u){return {a:u.a,b:u.b};});
   groupes.forEach(function(G){for(var i=1;i<G.membres.length;i++)paires.push({a:G.membres[i-1],b:G.membres[i]});});
   /* générations */
@@ -971,14 +980,17 @@ function calculerDisposition(d,opt){
     if(Gc)return ordreGroupe(comp,Gc);
     var c=comp[0];
     comp.forEach(function(x){if(adj[x].length>adj[c].length||(adj[x].length===adj[c].length&&idx[x]<idx[c]))c=x;});
-    var vis={};vis[c]=1;var Lc=[],Rc=[];
-    adj[c].slice().sort(function(x,y){return idx[x]-idx[y];}).forEach(function(n){
-      if(vis[n])return;
+    var vis={};vis[c]=1;var Lc=[],Rc=[],parIdx=function(x,y){return idx[x]-idx[y];};
+    /* branche : la personne puis, vers l'extérieur, ses autres conjoints et leurs propres branches */
+    var branche=function(x){var r=[x];adj[x].slice().sort(parIdx).forEach(function(y){if(vis[y])return;vis[y]=1;r=r.concat(branche(y));});return r;};
+    var dir=[];
+    adj[c].slice().sort(parIdx).forEach(function(n){
+      if(vis[n])return;vis[n]=1;
       var u=uMap[key(c,n)],ex=u&&(u.virtuel||u.statut==='separe'||u.statut==='divorce'||u.statut==='veuf');
-      var chain=[],cur=n;
-      while(cur&&!vis[cur]){vis[cur]=1;chain.push(cur);cur=adj[cur].filter(function(y){return !vis[y];})[0];}
-      (ex?Lc:Rc).push(chain);
+      dir.push({n:n,ex:ex});
     });
+    dir.forEach(function(o){var ch=branche(o.n);(o.ex?Lc:Rc).push(ch);});
+    comp.forEach(function(x){if(!vis[x]){vis[x]=1;Rc.push([x]);}});
     /* plusieurs conjoints : un de chaque côté, pour qu'aucun trait d'union ne passe derrière une autre personne */
     while(Lc.length+1<Rc.length)Lc.push(Rc.shift());
     while(Rc.length+1<Lc.length)Rc.push(Lc.pop());
@@ -1047,6 +1059,26 @@ function calculerDisposition(d,opt){
   var noeuds={};
   ids.forEach(function(id){noeuds[id]={x:cx[id]+dec,y:Y0+gen[id]*ROWH,gen:gen[id]};});
   var uns=unions.map(function(u){return {id:u.id,a:u.a,b:u.b,statut:u.statut,virtuel:u.virtuel,x1:noeuds[u.a].x,x2:noeuds[u.b].x,y:noeuds[u.a].y,mx:(noeuds[u.a].x+noeuds[u.b].x)/2};});
+  /* Unions entre personnes non voisines : arc au-dessus des symboles, sur des étages distincts ; les enfants descendent d'un intervalle libre */
+  var unsMap={},archHaut={},etages={};
+  uns.forEach(function(u){unsMap[u.id]=u;});
+  uns.filter(function(u){return Math.abs(u.x2-u.x1)>PITCH*1.5;})
+    .sort(function(a,b){return Math.abs(a.x2-a.x1)-Math.abs(b.x2-b.x1);})
+    .forEach(function(u){
+      var lo=Math.min(u.x1,u.x2),hi=Math.max(u.x1,u.x2),L=etages[u.y]||(etages[u.y]=[]),k=0;
+      /* départs décalés vers l'intérieur : deux arcs d'une même personne ne se touchent jamais */
+      var dx=u.x1<u.x2?7:-7;u.ax1=u.x1+dx;u.ax2=u.x2-dx;
+      var l2=lo+7,h2=hi-7;
+      while(L[k]&&L[k].some(function(iv){return l2<=iv[1]+4&&h2>=iv[0]-4;}))k++;
+      (L[k]||(L[k]=[])).push([l2,h2]);
+      u.arc=u.y-SYM-14-k*14;
+      var pres=[];ids.forEach(function(id){var n=noeuds[id];if(n.y===u.y&&n.x>=lo-1&&n.x<=hi+1)pres.push({id:id,x:n.x});});
+      pres.sort(function(a,b){return a.x-b.x;});
+      var mil=(lo+hi)/2,best=null,bc=Infinity;
+      for(var i=1;i<pres.length;i++){var gx=(pres[i-1].x+pres[i].x)/2,c=Math.abs(gx-mil)+(uMap[key(pres[i-1].id,pres[i].id)]?1000:0);if(c<bc){bc=c;best=gx;}}
+      u.ax=best;u.mx=mil;
+      archHaut[u.y]=Math.min(archHaut[u.y]===undefined?Infinity:archHaut[u.y],u.arc);
+    });
   /* Familles : un ancrage (union ou parent seul) + un type de filiation -> une barre horizontale propre */
   var fams={},liens=[];
   Object.keys(grp).forEach(function(k){
@@ -1058,7 +1090,8 @@ function calculerDisposition(d,opt){
       an.forEach(function(a){var fk=a.k+'|'+g.type,f=fams[fk]||(fams[fk]={type:g.type,ax:a.x,ay:a.y,enfants:[],parents:a.ps});f.enfants.push(g.enfant);});
       return;
     }
-    var ancres=g.union?[{k:'u'+g.union.id,x:(noeuds[g.union.a].x+noeuds[g.union.b].x)/2,y:noeuds[g.union.a].y,ps:[g.union.a,g.union.b]}]:g.parents.map(function(p){return {k:'p'+p,x:noeuds[p].x,y:noeuds[p].y+76,ps:[p]};});
+    var U=g.union?unsMap[g.union.id]:null;
+    var ancres=g.union?[{k:'u'+g.union.id,x:U.arc?U.ax:(noeuds[g.union.a].x+noeuds[g.union.b].x)/2,y:U.arc||noeuds[g.union.a].y,ps:[g.union.a,g.union.b]}]:g.parents.map(function(p){return {k:'p'+p,x:noeuds[p].x,y:noeuds[p].y+76,ps:[p]};});
     ancres.forEach(function(an){
       var fk=an.k+'|'+g.type,f=fams[fk]||(fams[fk]={type:g.type,ax:an.x,ay:an.y,enfants:[],parents:an.ps});
       f.enfants.push(g.enfant);
@@ -1088,9 +1121,11 @@ function calculerDisposition(d,opt){
       var lv=0;while(fin[lv]!==undefined&&fin[lv]>f.x0-45)lv++;
       fin[lv]=f.x1;f.niv=lv;
     });
-    var n=fin.length,pas=n>1?Math.min(16,64/(n-1)):0;
+    var n=fin.length,pas=n>1?Math.min(16,64/(n-1)):0,base=Number(r)-82;
+    var lim=archHaut[Number(r)+SYM+4]!==undefined?archHaut[Number(r)+SYM+4]-10:Number(r)-18;
+    if(base+pas*(n-1)>lim){pas=n>1?Math.max(5,Math.min(pas,(lim-base)/(n-1))):0;if(base+pas*(n-1)>lim)base=lim-pas*(n-1);}
     L.forEach(function(f){
-      var bus=f.top-82+f.niv*pas;
+      var bus=base+f.niv*pas;
       if(bus<=f.ay+8)bus=(f.ay+f.top)/2;
       f.enfants.forEach(function(e){var c=noeuds[e],top=c.y-SYM-4,j=pmap[e]&&pmap[e].jumeau;
         var fids=fils.filter(function(x){return x.enfant===e&&x.type===f.type&&f.parents.indexOf(x.parent)>=0;}).map(function(x){return x.id;});
@@ -1327,12 +1362,14 @@ function dessiner(g,lay,o){
     t.addEventListener('click',function(e){e.stopPropagation();if(vue.moved)return;formTrait({fids:l.fids});});g.appendChild(t);});
   lay.unions.forEach(function(u){
     var xa=Math.min(u.x1,u.x2)+lay.SYM,xb=Math.max(u.x1,u.x2)-lay.SYM,y=u.y,mx=u.mx;
-    if(u.virtuel){g.appendChild(s('line',{x1:xa,y1:y,x2:xb,y2:y,stroke:o.attenue?'#e1e5ea':'#94a3b8','stroke-width':1}));return;}
-    g.appendChild(s('line',{x1:xa,y1:y,x2:xb,y2:y,stroke:trait,'stroke-width':2,'stroke-dasharray':u.statut==='couple'?'7 5':null}));
-    var bar=function(dx){g.appendChild(s('line',{x1:mx+dx-4,y1:y+9,x2:mx+dx+4,y2:y-9,stroke:trait,'stroke-width':2}));};
+    /* union entre personnes non voisines : arc au-dessus des symboles */
+    var d=u.arc?'M'+u.ax1+' '+(y-lay.SYM+2)+' L'+u.ax1+' '+u.arc+' L'+u.ax2+' '+u.arc+' L'+u.ax2+' '+(y-lay.SYM+2):'M'+xa+' '+y+' L'+xb+' '+y,yb=u.arc||y;
+    if(u.virtuel){g.appendChild(s('path',{d:d,fill:'none',stroke:o.attenue?'#e1e5ea':'#94a3b8','stroke-width':1}));return;}
+    g.appendChild(s('path',{d:d,fill:'none',stroke:trait,'stroke-width':2,'stroke-dasharray':u.statut==='couple'?'7 5':null}));
+    var bar=function(dx){g.appendChild(s('line',{x1:mx+dx-4,y1:yb+9,x2:mx+dx+4,y2:yb-9,stroke:trait,'stroke-width':2}));};
     if(u.statut==='separe')bar(0);
     if(u.statut==='divorce'){bar(-4);bar(4);}
-    if(o.interactif){var t=s('line',{x1:xa,y1:y,x2:xb,y2:y,class:'hit','pointer-events':'stroke'});
+    if(o.interactif){var t=s('path',{d:d,class:'hit','pointer-events':'stroke'});
       t.appendChild(s('title',{},'Cliquer pour modifier ou supprimer cette union'));
       t.addEventListener('click',function(e){e.stopPropagation();if(vue.moved)return;formTrait({union:u.id});});g.appendChild(t);}
   });
