@@ -68,7 +68,10 @@ Comprendre une situation familiale (divorces, familles recomposées, demi-frère
 |---|---|
 | 👤 **Fiches personnes** | Prénom, nom, nom de naissance, sexe, date de naissance (âge calculé automatiquement) ou âge, profession, décès, notes. |
 | 🔗 **Liens guidés** | Une simple phrase : « X est le/la … de Y ». L'outil pose les bonnes questions (« Qui est l'autre parent ? », « Par quel parent ? ») et crée les parents inconnus si besoin. |
-| ⚡ **Boutons rapides** | Depuis la fiche d'une personne : **+ Enfant**, **+ Parent**, **+ Frère/sœur**, **+ Conjoint**. |
+| ⚡ **Boutons rapides** | Depuis la fiche d'une personne : **+ Enfant**, **+ Parent**, **+ Frère/sœur**, **+ Conjoint**, **Groupe parental**. |
+| 👨‍👩‍👧 **Familles pluriparentales** | Un enfant peut avoir ses parents biologiques **et** ses parents adoptifs (ou d'accueil). Le lien **« biologique, sans reconnaissance »** couvre le parent qui n'a pas reconnu l'enfant (2 pères et 2 mères possibles, par exemple). |
+| 🤝 **Groupe parental** | Trois parents ou plus pour une même fratrie (par exemple deux parents biologiques et un parent adoptif) : ils sont placés côte à côte et reliés par une accolade d'où partent les traits vers les enfants. |
+| 🖱️ **Édition dans l'arbre** | Un clic sur un trait permet de changer le type du lien ou de le **supprimer** (avec confirmation). Un clic sur une accolade ouvre le groupe parental. |
 | 🔄 **Parent inconnu remplaçable** | Le jour où vous savez qui c'est, remplacez le « Parent inconnu » par une personne déjà saisie : tous les liens sont reportés. |
 | ↶ **Annuler / Rétablir** | Ctrl+Z / Ctrl+Y (Cmd+Z sur Mac), 50 niveaux. |
 | ✅ **Contrôles de cohérence** | Alertes en cas d'âge incohérent, de plus de deux parents biologiques ou de boucle impossible dans l'arbre. |
@@ -88,7 +91,8 @@ Comprendre une situation familiale (divorces, familles recomposées, demi-frère
 
 | | |
 |---|---|
-| 🌳 **Arbre automatique** | Disposition par générations. Les frères et sœurs sont classés par âge (aîné à gauche), chaque couple a sa propre ligne, et les familles recomposées sont lisibles. |
+| 🌳 **Arbre automatique** | Disposition par générations. Les frères et sœurs sont classés par âge (aîné à gauche), chaque couple a sa propre ligne, et les familles recomposées sont lisibles. Aucun trait d'union ne passe derrière une autre personne. |
+| 🧭 **Placement d'un enfant à plusieurs familles** | Tous les traits restent dessinés, chacun avec son style. Vous choisissez sous quels parents l'enfant est placé : automatique (parents adoptifs s'il y en a), biologiques, adoptifs, famille d'accueil, beaux-parents ou entre tous. |
 | 🗺️ **Légende intégrée** | Un cartouche sur l'arbre ne liste que les symboles réellement utilisés. |
 | 🎯 **Vue centrée** | Pour les grandes familles : seules les personnes proches de l'élève restent affichées (profondeur 1 à 4). |
 | 🔍 **Zoom et déplacement** | Molette ou boutons + / − / recentrer. |
@@ -141,6 +145,8 @@ L'outil suit les conventions du **génogramme**.
 | Symbole | Signification | | Trait | Signification |
 |---|---|---|---|---|
 | ■ carré | Homme | | ── plein | Mariage / PACS, filiation biologique |
+| | | | ─·· tiret-point-point | Parent biologique sans reconnaissance |
+| | | | ⎵ accolade | Groupe parental (coparents) |
 | ● cercle | Femme | | ╌╌ tireté | Concubinage, adoption |
 | ◆ losange | Sexe non précisé | | ┈┈ pointillé | Accueil / placement |
 | ☒ croix | Personne décédée | | ─/─ | Séparation |
@@ -156,7 +162,7 @@ Les icônes apparaissent à côté des personnes concernées. Un clic sur une pe
 
 ## Liens de parenté
 
-Père / mère · fils / fille · frère / sœur · demi-frère / demi-sœur · frère / sœur par alliance · conjoint(e) · ex-conjoint(e) · grand-parent · petit-enfant · oncle / tante · neveu / nièce · cousin(e) · beau-père / belle-mère · beau-frère / belle-sœur · gendre / belle-fille · enfant adopté / placé · **lien libre** (parrain, référent, meilleur ami…).
+Père / mère · fils / fille · frère / sœur · demi-frère / demi-sœur · frère / sœur par alliance · conjoint(e) · ex-conjoint(e) · grand-parent · petit-enfant · oncle / tante · neveu / nièce · cousin(e) · beau-père / belle-mère · beau-frère / belle-sœur · gendre / belle-fille · enfant adopté / placé · père / mère biologique sans reconnaissance · coparent · **lien libre** (parrain, référent, meilleur ami…).
 
 Les liens sont **calculés**, jamais saisis deux fois. Exemple : si « Léa est la sœur de Tom », la fiche de Tom indique automatiquement « Tom est le frère de Léa ». Deux enfants qui ont les mêmes parents sont « frère et sœur » ; un seul parent en commun, et l'outil indique « demi-frère / demi-sœur ».
 
@@ -218,7 +224,7 @@ Le numéro de page du PDF n'apparaît que dans Chrome.
 - **Un seul fichier** : HTML + CSS + JavaScript vanilla, sans framework, sans dépendance et sans étape de compilation.
 - **Dessin** en SVG ; mise en page PDF via `@media print` et `@page` ; export PNG par canvas.
 - **Logique pure** (modèle, moteur de parenté, disposition, synthèse) isolée entre `/* @core-start */` et `/* @core-end */`. Elle est exposée par l'objet `Core`, testable dans Node.
-- **Modèle de données** : `dossier`, `personnes`, `unions`, `filiations`, `foyers`, `relations`, `liensLibres`. Les liens « métier » (frère, cousin…) ne sont jamais stockés : ils sont recalculés.
+- **Modèle de données** : `dossier`, `personnes`, `unions`, `filiations`, `groupes` (groupes parentaux), `foyers`, `relations`, `liensLibres`. Types de filiation : `biologique`, `biologique-nr` (sans reconnaissance), `adoptif`, `accueil`, `beau-parent` ; champ `rattachement` d'une personne pour son placement. Les liens « métier » (frère, cousin…) ne sont jamais stockés : ils sont recalculés.
 
 ```
 arbre-genealogique.html   application complète
